@@ -1,0 +1,22 @@
+[project]
+name = "book-mate"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.6",
+    "openai>=1.108.2",
+    "pandas>=2.3.2",
+    "qdrant-client>=1.15.1",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=5.1.1",
+    "tiktoken>=0.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+    "python-dotenv>=1.1.1",
+    "tqdm>=4.67.1",
+]
