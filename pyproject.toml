@@ -8,6 +8,7 @@ dependencies = [
     "matplotlib>=3.10.6",
     "openai>=1.108.2",
     "pandas>=2.3.2",
+    "psycopg2-binary>=2.9.10",
     "qdrant-client>=1.15.1",
     "rank-bm25>=0.2.2",
     "sentence-transformers>=5.1.1",
