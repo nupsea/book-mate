@@ -24,27 +24,53 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
     print(f"Searching for: '{query}' in book: {book_identifier}")
 
     try:
+        # Validate book exists and get book_id
+        store = PgresStore()
+        book_id = store._resolve_book_id(book_identifier)
+        if not book_id:
+            return {
+                "query": query,
+                "book": book_identifier,
+                "chunk_ids": [],
+                "chunks": [],
+                "num_results": 0,
+                "error": f"Book not found: {book_identifier}"
+            }
+
         retriever = FusionRetriever()
-        chunk_ids = retriever.id_search(query, topk=limit)
+        chunk_ids = retriever.id_search(query, topk=limit * 3)  # Get more results to filter
+
+        print(f"[DEBUG] Hybrid search returned {len(chunk_ids)} chunk IDs:")
+        for i, cid in enumerate(chunk_ids[:10], 1):  # Show first 10
+            print(f"  {i}. {cid}")
 
         # Fetch full chunk details from Qdrant by ID
         chunks_full = retriever.vec.get_chunks_by_ids(chunk_ids)
 
-        # Truncate text for display
+        print(f"[DEBUG] Filtering for book_identifier: '{book_identifier}'")
+        print(f"[DEBUG] Looking for chunks starting with: '{book_identifier}_'")
+
+        # Filter chunks by book_identifier and truncate text
         chunks_with_text = []
         for chunk in chunks_full:
-            text = chunk["text"]
-            chunks_with_text.append({
-                "id": chunk["id"],
-                "text": text[:200] + "..." if len(text) > 200 else text
-            })
+            # Check if chunk belongs to this book (chunk ID format: book_slug_chapter_chunk_hash)
+            if chunk["id"].startswith(f"{book_identifier}_"):
+                text = chunk["text"]
+                chunks_with_text.append({
+                    "id": chunk["id"],
+                    "text": text[:800] + "..." if len(text) > 800 else text
+                })
+                if len(chunks_with_text) >= limit:
+                    break
+
+        print(f"[DEBUG] After filtering: {len(chunks_with_text)} chunks matched")
 
         return {
             "query": query,
             "book": book_identifier,
-            "chunk_ids": chunk_ids,
+            "chunk_ids": [c["id"] for c in chunks_with_text],
             "chunks": chunks_with_text,
-            "num_results": len(chunk_ids)
+            "num_results": len(chunks_with_text)
         }
     except Exception as e:
         print(f"Search error: {e}")

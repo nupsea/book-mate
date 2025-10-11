@@ -5,6 +5,7 @@ from collections import defaultdict
 
 from src.content.reader import GutenbergReader
 from src.content.store import PgresStore
+from src.flows.book_ingest import ingest_book
 from src.llm.generator import SummaryGenerator
 
 async def load(chunks, slug: str, title: str, author: str = None, force_update: bool = False):
@@ -77,13 +78,29 @@ books_map = {
 }
 
 if __name__ == "__main__":
-    slug = "sha"
+    slug = "mma"  # Change to "ody", "aiw", "mma", or "sha" as needed
 
     reader = GutenbergReader(books_map[slug]["file_path"], slug, split_pattern=books_map[slug]["split_pattern"])
     chunks = reader.parse(max_tokens=500, overlap=100)
-    asyncio.run(load(chunks, slug="sha", title="Sherlock Holmes", author="Arthur Conan Doyle"))
-    # asyncio.run(load(chunks, slug="sha", title="Sherlock Holmes", author="Arthur Conan Doyle", force_update=True))  # Force regenerate
+
+    # Load metadata into DB (with summaries)
+    asyncio.run(load(chunks, slug=slug, title=books_map[slug]["title"], author=books_map[slug]["author"]))
+    # asyncio.run(load(chunks, slug=slug, title=books_map[slug]["title"], author=books_map[slug]["author"], force_update=True))  # Force regenerate
     print(f"Total chunks parsed: {len(chunks)}")
     print(f"Total characters: {sum(len(c.get('text', '')) for c in chunks)}")
     print(f"First chunk: {chunks[0]}")
     print(f"Last chunk: {chunks[-1]}")
+
+    # Ingest index contents into into Search DB
+    print(f"\nIngesting book '{slug}' into search index...")
+    result = asyncio.run(ingest_book(
+        slug=slug,
+        file_path=books_map[slug]["file_path"],
+        title=books_map[slug]["title"],
+        author=books_map[slug]["author"],
+        split_pattern=books_map[slug]["split_pattern"],
+        force_update=True
+    ))
+    print(f"\nIngestion complete: {result}")
+
+

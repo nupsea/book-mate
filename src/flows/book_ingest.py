@@ -171,6 +171,6 @@ if __name__ == "__main__":
         title="The Odyssey",
         author="Homer",
         split_pattern=r"^(?:BOOK [IVXLCDM]+)\s*\n",
-        force_update=True
+        force_update=False
     ))
     print(f"\nIngestion complete: {result}")
