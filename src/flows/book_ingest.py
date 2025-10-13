@@ -77,13 +77,37 @@ def store_to_db(slug: str, title: str, author: str,
 
 
 def build_search_indexes(chunks: list):
-    """Build BM25 and vector search indexes."""
+    """Build BM25 and vector search indexes (append to existing indexes)."""
     retriever = FusionRetriever()
-    retriever.build_index(chunks)
+
+    # Load existing BM25 index (if exists)
+    try:
+        retriever.load_bm25_index()
+        print(f"Loaded existing BM25 index with {retriever.bm25.N} documents")
+
+        # Append new chunks to existing index
+        existing_chunks = [
+            {"id": retriever.bm25.ids[i], "text": retriever.bm25.raw_docs[i]}
+            for i in range(retriever.bm25.N)
+        ]
+        all_chunks = existing_chunks + chunks
+        print(f"Building combined index with {len(all_chunks)} total chunks")
+
+    except FileNotFoundError:
+        print("No existing BM25 index found, creating new one")
+        all_chunks = chunks
+
+    # Rebuild BM25 with all chunks (existing + new)
+    retriever.bm25.build_index(all_chunks)
+    retriever.bm25.save_index(retriever.bm25_index_path)
+
+    # Build vector index for new chunks only (Qdrant handles appending)
+    retriever.vec.build_index(chunks)
 
     return {
-        "bm25_indexed": len(chunks),
-        "vector_indexed": len(chunks)
+        "bm25_indexed": len(all_chunks),
+        "vector_indexed": len(chunks),
+        "new_chunks": len(chunks)
     }
 
 

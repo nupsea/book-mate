@@ -14,7 +14,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   qdrant:
-    image: qdrant/qdrant:v1.8.3
+    image: qdrant/qdrant:v1.15.1
     container_name: qdrant
     ports:
       - "6333:6333"

@@ -78,6 +78,17 @@ psql -h localhost -U bookuser -d booksdb
 
 ## Agentic Workflow
 
+### UI 
+Run the gradio app to interact with the agent, load books and query content.
+```zsh
+uv run python -m src.ui.app
+```
+
+![Chat UI](image.png)
+
+
+### CLI 
+
 ```zsh
 source .env
 ❯ uv run python -m src.mcp_client.agent
@@ -128,6 +139,8 @@ Agent: The passages on death from *Meditations* by Marcus Aurelius capture the S
 
 Collectively, these passages from *Meditations* offer profound insights into the Stoic view on death. Marcus Aurelius encourages acceptance, reflection, and the pursuit of a virtuous life unencumbered by the fear of mortality. He invites readers to recognize death as an inseparable aspect of the human experience and to use this awareness as motivation to live with purpose and integrity. The emphasis on equanimity and the natural order of life creates a strong philosophical foundation for confronting the ultimate reality of death.
 ```
+
+
 
 ## References & Acknowledgements
 Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible
