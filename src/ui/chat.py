@@ -113,7 +113,6 @@ def create_chat_interface(ui):
                 gr.Markdown("### Library")
 
                 book_list = gr.Dataframe(
-                    value=format_book_list(get_available_books()),
                     headers=["Slug", "Title", "Author", "Chunks", "Added"],
                     datatype=["str", "str", "str", "number", "str"],
                     interactive=False,
@@ -139,4 +138,8 @@ def create_chat_interface(ui):
             [feedback_status, feedback_row]
         )
 
-    return book_dropdown, book_list
+        # Load book list on page load
+        def load_book_list():
+            return format_book_list(get_available_books())
+
+    return book_dropdown, book_list, load_book_list

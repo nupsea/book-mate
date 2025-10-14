@@ -120,7 +120,7 @@ def create_app():
         with gr.Tabs() as tabs:
             # Tab 1: Chat Interface
             with gr.Tab("Chat", id=0) as chat_tab:
-                dropdown, book_list = create_chat_interface(ui)
+                dropdown, book_list, load_book_list = create_chat_interface(ui)
 
             # Tab 2: Add New Book
             with gr.Tab("Add Book", id=1) as ingest_tab:
@@ -152,6 +152,13 @@ def create_app():
             return new_list, gr.update(choices=new_choices), new_list
 
         tabs.select(refresh_on_tab_change, None, [book_list, dropdown, ingest_book_list])
+
+        # Load book lists on startup
+        def load_ingest_list():
+            return format_book_list(get_available_books())
+
+        app.load(load_book_list, None, book_list)
+        app.load(load_ingest_list, None, ingest_book_list)
 
     return app
 

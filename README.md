@@ -42,6 +42,8 @@ uv run python -m src.ui.app
 
 Open http://localhost:7860 in your browser.
 
+![Book Mate UI](image-1.png)
+
 ## Using Book Mate
 
 ### 1. Add a Book
@@ -53,6 +55,8 @@ Go to the "Add Book" tab:
 4. Click "Test Pattern" to verify chapter detection
 5. Click "Ingest Book" to index the content
 
+![Add Book](image-2.png)
+
 ### 2. Chat with Books
 
 Go to the "Chat" tab:
@@ -63,6 +67,8 @@ Go to the "Chat" tab:
    - "Give me examples of rejection of external validation"
 3. Rate responses to help improve the system
 
+![Chat with Books](image-3.png)
+
 ### 3. Monitor Performance
 
 Go to the "Monitoring" tab to view:
@@ -70,6 +76,8 @@ Go to the "Monitoring" tab to view:
 - LLM self-assessments (EXCELLENT/ADEQUATE/POOR)
 - User feedback ratings
 - Tool usage statistics
+
+![Monitoring Dashboard](image-4.png)
 
 ## Project Structure
 
