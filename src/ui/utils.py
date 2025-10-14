@@ -6,11 +6,15 @@ from src.content.store import PgresStore
 
 
 def get_available_books():
-    """Fetch list of books from database with slug and title."""
+    """Fetch list of books from database with slug, title, author, chunks, and added_at."""
     try:
         store = PgresStore()
         with store.conn.cursor() as cur:
-            cur.execute("SELECT slug, title, author, num_chunks FROM books ORDER BY slug")
+            cur.execute("""
+                SELECT slug, title, author, num_chunks, added_at
+                FROM books
+                ORDER BY added_at DESC
+            """)
             books = cur.fetchall()
         return books
     except Exception as e:
@@ -138,16 +142,27 @@ def extract_chapter_info_from_chunks(slug: str):
 
 
 def format_book_list(books):
-    """Format book list for display."""
+    """Format book list as a dataframe (list of lists for Gradio Dataframe)."""
     if not books:
-        return "No books in library"
+        return []
 
-    output = "Available Books:\n\n"
-    for slug, title, author, num_chunks in books:
-        author_str = f" by {author}" if author else ""
-        output += f"[{slug}] {title}{author_str} ({num_chunks} chunks)\n"
+    data = []
+    for slug, title, author, num_chunks, added_at in books:
+        # Format date
+        if added_at:
+            date_str = added_at.strftime("%Y-%m-%d %H:%M")
+        else:
+            date_str = "Unknown"
 
-    return output
+        data.append([
+            slug,
+            title,
+            author or "Unknown",
+            num_chunks if num_chunks else 0,
+            date_str
+        ])
+
+    return data
 
 
 def delete_book(slug: str) -> tuple[bool, str, int]:

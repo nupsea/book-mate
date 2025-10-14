@@ -2,7 +2,7 @@
 Book query script - plain Python.
 """
 from src.content.store import PgresStore
-from src.search.hybrid import FusionRetriever
+from src.search.adaptive import AdaptiveRetriever
 
 
 def validate_book_exists(book_identifier: str | int):
@@ -37,7 +37,7 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
                 "error": f"Book not found: {book_identifier}"
             }
 
-        retriever = FusionRetriever()
+        retriever = AdaptiveRetriever()
         chunk_ids = retriever.id_search(query, topk=limit * 3)  # Get more results to filter
 
         print(f"[DEBUG] Hybrid search returned {len(chunk_ids)} chunk IDs:")

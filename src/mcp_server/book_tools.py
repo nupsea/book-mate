@@ -27,7 +27,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "book_identifier": {
                         "type": "string",
-                        "description": "Book slug (e.g., 'mma', 'ody', 'aiw')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
                     },
                     "limit": {
                         "type": "integer",
@@ -46,7 +46,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "Book slug (e.g., 'mma', 'ody', 'aiw')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
                     }
                 },
                 "required": ["book_identifier"]
@@ -60,7 +60,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "Book slug (e.g., 'mma', 'ody', 'aiw')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
                     }
                 },
                 "required": ["book_identifier"]

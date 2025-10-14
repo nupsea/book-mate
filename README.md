@@ -9,8 +9,13 @@ Upload the contents of a book and seek answers.
 - Python 3.10+
 - Docker & Docker Compose
 - OpenAI API Key
-- PostgreSQL
+
+### Software Components Used
+- PostgreSQL (Metadata DB)
 - Qdrant (Vector DB)
+- Gradio (UI)
+- MCP (Agent Framework)
+- OpenAI (LLM)
 
 ### 1. Clone and Install
 ```zsh
@@ -34,6 +39,7 @@ docker logs <container_id>
 
 ```
 
+# TODO Remove the CLI cmds below and replace with the instructions for UI and Agentic workflow
 ### 2. Ingest a Book
 In main.py, change the `slug` variable to one of the available books or add your own book in the `books_map` dictionary.:
 ```python

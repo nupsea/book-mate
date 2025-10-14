@@ -7,6 +7,7 @@ import os
 from src.mcp_client.agent import BookMateAgent
 from src.ui.chat import create_chat_interface
 from src.ui.ingest import create_ingest_interface
+from src.ui.monitoring import create_monitoring_interface
 
 
 class BookMateUI:
@@ -32,7 +33,7 @@ class BookMateUI:
                 self.agent = None
                 raise
 
-    async def chat(self, message: str, history: list, selected_book: str = None):
+    async def chat(self, message: str, history: list, selected_book: str = None) -> tuple[str, str]:
         """
         Handle chat messages with the agent.
 
@@ -42,7 +43,7 @@ class BookMateUI:
             selected_book: Selected book slug (optional)
 
         Returns:
-            Agent response
+            (agent_response, query_id)
         """
         # Initialize agent with retry logic
         max_retries = 2
@@ -57,10 +58,31 @@ class BookMateUI:
                     print(f"Init attempt {attempt + 1} failed, retrying...")
                     await asyncio.sleep(2)
 
-        # Auto-inject book identifier if selected
+        # Auto-inject book title if selected
+        print(f"\n[UI] Original message: {message}")
+        print(f"[UI] Selected book slug from dropdown: {selected_book}")
+
         if selected_book and selected_book != "none":
-            if selected_book.lower() not in message.lower():
-                message = f"{message} (Use book '{selected_book}')"
+            # Get book title from slug
+            from src.content.store import PgresStore
+            try:
+                store = PgresStore()
+                with store.conn.cursor() as cur:
+                    cur.execute("SELECT title FROM books WHERE slug = %s", (selected_book,))
+                    result = cur.fetchone()
+                    if result:
+                        book_title = result[0]
+                        print(f"[UI] Found book title for slug '{selected_book}': {book_title}")
+                        # Only inject if not already mentioned
+                        if book_title.lower() not in message.lower():
+                            message = f"{message} (for the book '{book_title}')"
+                            print(f"[UI] Injected title into message: {message}")
+                        else:
+                            print(f"[UI] Title already in message, not injecting")
+            except Exception as e:
+                print(f"[WARN] Could not get book title: {e}")
+        else:
+            print(f"[UI] No book selected from dropdown")
 
         # Convert Gradio history to OpenAI format
         conversation_history = []
@@ -70,13 +92,13 @@ class BookMateUI:
                 conversation_history.append({"role": "assistant", "content": bot_msg})
 
         try:
-            response, _ = await self.agent.chat(message, conversation_history)
-            return response
+            response, _, query_id = await self.agent.chat(message, conversation_history)
+            return response, query_id
         except Exception as e:
             print(f"Chat error: {e}")
             # Reset agent on error
             self.agent = None
-            return f"Error: {str(e)}. Connection reset, please try again."
+            return f"Error: {str(e)}. Connection reset, please try again.", None
 
     async def cleanup(self):
         """Clean up agent resources."""
@@ -104,13 +126,18 @@ def create_app():
             with gr.Tab("Add Book", id=1) as ingest_tab:
                 ingest_book_list = create_ingest_interface()
 
+            # Tab 3: Monitoring
+            with gr.Tab("Monitoring", id=2) as monitoring_tab:
+                create_monitoring_interface()
+
         # Auto-refresh book lists when switching tabs
         def refresh_on_tab_change(evt: gr.SelectData):
             # Always fetch fresh data from database (source of truth)
             books = get_available_books()
             new_list = format_book_list(books)
+            # Show only titles in dropdown, not slugs
             new_choices = [("Select a book...", "none")] + \
-                          [(f"{title} ({slug})", slug) for slug, title, _, _ in books]
+                          [(f"{title}", slug) for slug, title, _, _, _ in books]
 
             print(f"[DEBUG] Tab switched to: {evt.value}, refreshing with {len(books)} books")
 

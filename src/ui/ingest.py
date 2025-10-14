@@ -304,11 +304,12 @@ def create_ingest_interface():
                     show_label=False
                 )
 
-                book_list_display = gr.Textbox(
+                book_list_display = gr.Dataframe(
                     value=format_book_list(get_available_books()),
-                    lines=15,
+                    headers=["Slug", "Title", "Author", "Chunks", "Added"],
+                    datatype=["str", "str", "str", "number", "str"],
                     interactive=False,
-                    show_label=False
+                    wrap=True
                 )
 
                 gr.Markdown("#### Delete Book")
@@ -443,7 +444,7 @@ def create_ingest_interface():
                     gr.update(visible=False)
                 )
 
-            book_slug, book_title, book_author, num_chunks = book_info
+            book_slug, book_title, book_author, num_chunks, _ = book_info
             author_str = f" by {book_author}" if book_author else ""
 
             confirm_msg = f"[CONFIRM?] Delete '{book_title}'{author_str}? ({num_chunks} chunks)\n"
