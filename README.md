@@ -1,149 +1,217 @@
-# book-mate
-Upload the contents of a book and seek answers.
+# Book Mate
 
+A book assistant (powered by LLMs) that lets you upload books, chat with their content, and seek answers about book content using hybrid search (BM25 + vector embeddings) and MCP (Model Context Protocol) workflow. 
 
+## Features
 
-## Project Setup
+- Book Ingestion: Upload and index books with automatic chapter detection
+- AI Chat Interface: Ask questions about book content with context-aware responses
+- Hybrid Search: Combines BM25 keyword search with semantic vector search
+- Monitoring Dashboard: Track query performance, LLM quality assessments, and user feedback
+- MCP Integration: Uses Model Context Protocol for tool-based agent interactions
+
+## Quick Start
 
 ### Prerequisites
 - Python 3.10+
 - Docker & Docker Compose
 - OpenAI API Key
 
-### Software Components Used
-- PostgreSQL (Metadata DB)
-- Qdrant (Vector DB)
-- Gradio (UI)
-- MCP (Agent Framework)
-- OpenAI (LLM)
+### Installation
 
-### 1. Clone and Install
-```zsh
+```bash
 git clone <repository-url>
 cd book-mate
 
+# Set up environment
 cp .env_template .env
-# Update .env with your OpenAI API key, PG_USER and PG_PASS
+# Update .env with your OPENAI_API_KEY
 
-
+# Install dependencies
 uv pip install -e .
 
+# Start services (PostgreSQL, Qdrant) and the UI
 make start
-# This starts PostgreSQL, Qdrant, and pgAdmin containers. 
-# And also creates the metadata DB and users as per .env
-
-
-# Check for running containers and their status and if need be the docker logs for any issues
-docker ps
-docker logs <container_id>
-
 ```
 
-# TODO Remove the CLI cmds below and replace with the instructions for UI and Agentic workflow
-### 2. Ingest a Book
-In main.py, change the `slug` variable to one of the available books or add your own book in the `books_map` dictionary.:
-```python
-    slug = "mma"  # Change to "ody", "aiw", "mma", or "sha" as needed
-```
+### Launch the UI
 
-Then run the below command to ingest the book to add the book metadata, parse the content into chunks, generate summaries, and create search indexes.
-```zsh
-uv run python -m src.app.ingest
-```
-
-### 3. Query the Book
-You can run the query flow to search for content in the ingested book.
-```zsh
-uv run python -m src.flows.book_query
-```
-or
-```zsh
-uv run python -c "
-from src.flows.book_query import search_book_content
-result = search_book_content('death', 'mma', limit=5)
-print(f'\nFinal result: {result[\"num_results\"]} chunks found')
-if result['num_results'] > 0:
-    print('\nFirst passage preview:')
-    print(result['chunks'][0]['text'][:200])
-"
-```
-
-### 4. Summmarize the Book
-You can run the summarization flow to generate chapter-wise and overall book summaries.
-```zsh
-uv run python -m src.flows.book_summarize
-```
-
-
-
-### Debug
-```
-psql -h localhost -U bookuser -d booksdb
-```
-
-
-## Agentic Workflow
-
-### UI 
-Run the gradio app to interact with the agent, load books and query content.
-```zsh
+```bash
 uv run python -m src.ui.app
 ```
 
-![Chat UI](image.png)
+Open http://localhost:7860 in your browser.
 
+## Using Book Mate
 
-### CLI 
+### 1. Add a Book
 
-```zsh
+Go to the "Add Book" tab:
+1. Upload your book file (.txt format)
+2. Enter book title, author, and a unique slug (e.g., "mam" for Meditations)
+3. Provide a chapter pattern example (e.g., `CHAPTER I` or `* BOOK`)
+4. Click "Test Pattern" to verify chapter detection
+5. Click "Ingest Book" to index the content
+
+### 2. Chat with Books
+
+Go to the "Chat" tab:
+1. Select a book from the dropdown (optional)
+2. Ask questions like:
+   - "What is this book about?"
+   - "Search for passages about virtue"
+   - "Give me examples of rejection of external validation"
+3. Rate responses to help improve the system
+
+### 3. Monitor Performance
+
+Go to the "Monitoring" tab to view:
+- Query performance metrics (latency, success rate)
+- LLM self-assessments (EXCELLENT/ADEQUATE/POOR)
+- User feedback ratings
+- Tool usage statistics
+
+## Project Structure
+
+```
+book-mate/
+├── src/
+│   ├── app/              # Main application entry points
+│   ├── content/          # Book reading and storage
+│   ├── flows/            # Ingestion and query workflows
+│   ├── llm/              # LLM interfaces (summarization, embeddings)
+│   ├── mcp_client/       # MCP client agent implementation
+│   ├── mcp_server/       # MCP server with book tools
+│   ├── monitoring/       # Metrics collection and quality assessment
+│   ├── search/           # Hybrid search (BM25 + vector)
+│   └── ui/               # Gradio UI components
+├── notebooks/            # Jupyter notebooks for exploration and analysis
+├── DATA/                 # Book files (.txt)
+├── INDEXES/              # BM25 search indexes
+├── docker-compose.yml    # PostgreSQL + Qdrant services
+└── Makefile              # Common commands
+```
+
+**Notebooks**: The `notebooks/` directory contains Jupyter notebooks for initial exploration, search evaluation, and ground truth generation. These are useful for understanding search performance and experimenting with different approaches.
+
+## Architecture
+
+```
+┌─────────────┐
+│  Gradio UI  │
+└──────┬──────┘
+       │
+┌──────▼────────────┐         ┌──────────────┐
+│  BookMateAgent    │◄───────►│  OpenAI API  │
+│  (MCP Client)     │         └──────────────┘
+└──────┬────────────┘
+       │
+┌──────▼────────────┐
+│   MCP Server      │
+│  (Book Tools)     │
+└──────┬────────────┘
+       │
+       ├──────────► PostgreSQL (Metadata, Summaries)
+       ├──────────► BM25 Index (Keyword Search)
+       └──────────► Qdrant (Vector Search)
+```
+
+### Key Components
+
+- **PostgreSQL**: Stores book metadata, summaries, and query metrics
+- **Qdrant**: Vector database for semantic search
+- **BM25**: Keyword-based search index
+- **MCP Server**: Exposes book tools (search, summaries) to the agent
+- **OpenAI**: Powers the conversational AI and embeddings
+
+## Database Debug
+
+```bash
+psql -h localhost -U bookuser -d booksdb
+# or
+pgcli -h localhost -U bookuser -d booksdb
+```
+
+## CLI Usage (Advanced)
+
+### Test MCP Agent Directly
+
+```bash
 source .env
-❯ uv run python -m src.mcp_client.agent
-Connected to MCP server. Available tools: ['search_book', 'get_book_summary', 'get_chapter_summaries']
+uv run python -m src.mcp_client.agent
+```
 
-=== Book Mate Agent ===
+This runs the agent in CLI mode with a hardcoded test conversation.
 
-[TOOL] Calling: get_book_summary({'book_identifier': 'mma'})
-Agent: The book *Meditations* by Marcus Aurelius serves as both a personal diary and a philosophical treatise, providing a deep exploration of Stoicism—the ancient philosophy advocating for virtue, self-control, and rationality. Written during his time as Roman Emperor, Aurelius reflects on the challenges of leadership, human suffering, and the quest for personal integrity amidst the pressures of his role.
+### Query Books Programmatically
 
-### Key Themes and Insights:
+**Search for content:**
+```python
+uv run python -c "
+from src.flows.book_query import search_book_content
+result = search_book_content('death', 'mam', limit=5)
+print(f'\nFound {result[\"num_results\"]} results')
+for i, chunk in enumerate(result['chunks'][:3], 1):
+    print(f'\nPassage {i}:')
+    print(chunk['text'][:200])
+"
+```
 
-1. **Stoicism and Virtue**: At its core, *Meditations* emphasizes the Stoic ideals of virtue, wisdom, and rationality. Marcus articulates the importance of aligning one's actions with these principles, understanding that true contentment arises from within rather than from external circumstances or societal approval. This aligns with the notion that ethical living is paramount, regardless of the chaos of the world around him.
+**Get book summary:**
+```python
+uv run python -c "
+from src.flows.book_query import get_book_summary
+result = get_book_summary('mam')
+print(result['summary'])
+"
+```
 
-2. **The Nature of Existence**: Aurelius grapples with fundamental questions about the nature of life, asking readers to reflect on the transient nature of existence. He recognizes the inevitability of change and death, urging a perspective that embraces life's fleeting moments with gratitude and acceptance. His reflections challenge readers to acknowledge their mortality and make the most of the time they have.
+**Get chapter summaries:**
+```python
+uv run python -c "
+from src.flows.book_query import get_chapter_summaries
+result = get_chapter_summaries('mam')
+print(f'Found {result[\"num_chapters\"]} chapters')
+for ch in result['chapters'][:3]:
+    print(f'\nChapter {ch[\"chapter_id\"]}:')
+    print(ch['summary'][:150])
+"
+```
 
-3. **Personal Struggles and Leadership**: The text reveals Aurelius's own struggles, underscoring the paradox of being a compassionate ruler in a tumultuous period. He highlights the balance between personal integrity and the often harsh realities of governance. His candidness about his own vulnerabilities demonstrates that even great leaders face internal conflicts and existential doubts.
+### Manual Book Ingestion
 
-4. **Interconnectedness and the Common Good**: A significant aspect of Aurelius's philosophy is the interconnectedness of humanity. He advocates for empathy and understanding toward others, viewing the welfare of the community as integral to individual well-being. This theme emphasizes mutual responsibility and the importance of striving for a common good that transcends individual desires.
+If you prefer CLI ingestion over the UI:
 
-5. **Self-Reflection and Inner Peace**: Throughout *Meditations*, Marcus encourages ongoing self-reflection as a means to cultivate inner peace. He posits that by focusing on the rational mind and maintaining discipline, individuals can navigate life's distractions and find tranquility. The work offers practical advice for achieving mental clarity, which is essential for a fulfilling life.
+```bash
+# Edit src/app/ingest.py to set the book slug
+# Then run:
+uv run python -m src.app.ingest
+```
 
-### Conclusion:
+### Explore Search Indexes
 
-Ultimately, *Meditations* is more than a personal reflection; it is a guide for living a meaningful life grounded in Stoic philosophy. Marcus Aurelius prompts readers to adopt a mindset of resilience, wisdom, and moral integrity, fostering a sense of harmony with oneself and the universe. Through his writings, he stresses that the path to true contentment involves understanding our place in the cosmos and acting with virtue, regardless of external circumstances. This enduring message resonates with readers across generations, offering timeless wisdom for navigating the complexities of human existence.
+```python
+# Check BM25 index contents
+uv run python -c "
+from src.search.hybrid import FusionRetriever
+retriever = FusionRetriever()
+retriever.load_bm25_index()
+print(f'Total documents indexed: {retriever.bm25.N}')
+print(f'First 5 document IDs: {retriever.bm25.ids[:5]}')
+"
+```
 
-[TOOL] Calling: search_book({'query': 'death', 'book_identifier': 'mma'})
-Agent: The passages on death from *Meditations* by Marcus Aurelius capture the Stoic perspective on mortality, focusing on its inevitability and the importance of cultivating a mindset that accepts rather than resists the natural course of life. Here’s an analysis of the selected passages:
+### Database Queries
 
-### Passage Analysis:
+```bash
+# Check indexed books
+psql -h localhost -U bookuser -d booksdb -c "SELECT slug, title, num_chunks FROM books;"
 
-1. **Transience and Nature**:
-   In the first passage, Marcus highlights the cyclical nature of existence—just as seasons change, so too do life events, including sickness and death. He describes these occurrences as part of a "discreet connection of things orderly and harmoniously disposed." This reflects a central Stoic belief that death is an integral aspect of the universe's harmony and should not be feared or regarded with sorrow; rather, it is as natural as life itself. This passage encourages a mindset that embraces the inevitability of change, which can serve as a source of comfort in the face of adversity.
+# Check metrics
+psql -h localhost -U bookuser -d booksdb -c "SELECT COUNT(*), AVG(latency_ms), AVG(user_rating) FROM query_metrics;"
 
-2. **Universal Experience of Death**:
-   The second passage reflects on notable historical figures and the universal experience of death. By noting that even the most powerful and illustrious individuals eventually succumb to death, Marcus underscores the equality enforced by mortality—regardless of one's status or achievements, everyone faces the same fate. This serves to diminish the weight of personal vanity and ambition, prompting readers to reflect on what truly matters in life beyond fame and glory.
-
-3. **Indifference to the Timing of Death**:
-   The third passage articulates the idea that the specific timing of death ("to-morrow or next day") is of little consequence. Marcus suggests that rather than stressing over when death will occur, one should focus on living virtuously in the present. This perspective can liberate individuals from the anxiety of postponing their lives due to fear of death; it encourages a proactive approach to existence, advocating for a life well-lived regardless of its duration.
-
-4. **Reflection on Mortality Across Professions**:
-   In another passage, Marcus reflects on physicians, astrologers, and philosophers who, despite their roles in contemplating and predicting death, also meet the same end. This commentary reinforces the notion that knowledge and expertise do not shield one from mortality. It serves as a reminder that wisdom should transcend the fear of death, directing focus instead on how to live meaningfully.
-
-5. **Equanimity in Life’s Events**:
-   The fifth passage comments on the events of life, including death, stating that these occurrences happen to everyone—both the good and bad. Marcus emphasizes that life, death, honor, and dishonor are indifferent; their inherent quality of being good or bad is shaped by how individuals choose to respond to them. This Stoic principle invites readers to maintain composure and equanimity amidst life’s uncertainties and challenges.
-
-### Conclusion:
-
-Collectively, these passages from *Meditations* offer profound insights into the Stoic view on death. Marcus Aurelius encourages acceptance, reflection, and the pursuit of a virtuous life unencumbered by the fear of mortality. He invites readers to recognize death as an inseparable aspect of the human experience and to use this awareness as motivation to live with purpose and integrity. The emphasis on equanimity and the natural order of life creates a strong philosophical foundation for confronting the ultimate reality of death.
+# View recent queries
+psql -h localhost -U bookuser -d booksdb -c "SELECT query, llm_relevance_score, user_rating FROM query_metrics ORDER BY timestamp DESC LIMIT 10;"
 ```
 
 
