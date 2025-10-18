@@ -107,6 +107,72 @@ class BookMateAgent:
             print(f"[WARN] Could not load book list: {e}")
             return "Book list unavailable.", {}
 
+    async def _rephrase_query(self, original_query: str, book_title: str = None) -> str:
+        """
+        Use LLM to rephrase a search query that returned no results.
+
+        Args:
+            original_query: The original search query
+            book_title: Optional book title for context
+
+        Returns:
+            Rephrased query string
+        """
+        context = f" in the book '{book_title}'" if book_title else ""
+
+        rephrase_prompt = f"""The following search query{context} returned no results:
+"{original_query}"
+
+Please rephrase this query to be more effective for semantic search. Consider:
+1. Using synonyms or related terms
+2. Broadening the search scope slightly
+3. Simplifying complex queries
+4. Using different phrasings
+
+Return ONLY the rephrased query, nothing else."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a search query optimization assistant."},
+                    {"role": "user", "content": rephrase_prompt}
+                ],
+                temperature=0.3
+            )
+
+            rephrased = response.choices[0].message.content.strip()
+            print(f"[RETRY] Original query: '{original_query}'")
+            print(f"[RETRY] Rephrased query: '{rephrased}'")
+            return rephrased
+
+        except Exception as e:
+            print(f"[RETRY] Error rephrasing query: {e}")
+            return original_query  # Fall back to original
+
+    def _extract_search_results_count(self, tool_result: str) -> int:
+        """
+        Parse the number of results from a search_book tool response.
+
+        Returns:
+            Number of results, or -1 if unable to parse
+        """
+        try:
+            # Look for "Found X results" pattern
+            import re
+            match = re.search(r'Found (\d+) results?', tool_result)
+            if match:
+                return int(match.group(1))
+
+            # Alternative: Look for "No results found"
+            if "No results found" in tool_result or "0 results" in tool_result:
+                return 0
+
+            return -1  # Unknown
+        except Exception as e:
+            print(f"[RETRY] Error parsing search results: {e}")
+            return -1
+
     async def chat(self, user_message: str, conversation_history: list = None) -> tuple[str, list, str]:
         """
         Send a message and handle tool calls automatically.
@@ -150,9 +216,19 @@ class BookMateAgent:
                                 f"2. If asked about a book's plot/summary, you MUST call get_book_summary tool\n"
                                 f"3. If asked to search for specific content, you MUST call search_book tool\n"
                                 f"4. For tool parameters, use the exact book title as the book_identifier\n"
-                                f"5. If no data exists in tools, clearly state you don't have that information - DO NOT fabricate\n\n"
+                                f"5. CITATIONS: When using search results, ALWAYS include citations in your response.\n"
+                                f"   - Reference passages naturally in your text\n"
+                                f"   - Use the format: [Chapter X, Source: chunk_id]\n"
+                                f"   - Example: 'Marcus emphasizes acceptance of death [Chapter 4, Source: mam_04_003_abc123]'\n"
+                                f"   - Include citations for every specific claim from search results\n"
+                                f"6. If search returns 0 results:\n"
+                                f"   - The system will automatically try a rephrased query for you\n"
+                                f"   - If that also returns 0 results, use available context (book summaries, chapter summaries)\n"
+                                f"   - You may provide general insights based on the book's themes if you have context\n"
+                                f"   - Always acknowledge that specific passages weren't found\n"
+                                f"7. If no data exists in tools, clearly state you don't have that information - DO NOT fabricate\n\n"
                                 f"{available_books}\n\n"
-                                f"Remember: Always call tools first, never answer from your training data."
+                                f"Remember: Always call tools first, and cite your sources when using search results."
                             )
                         }
                     ]
@@ -222,6 +298,10 @@ class BookMateAgent:
                             print(f"[ERROR] Invalid JSON in tool arguments: {e}")
                             function_args = {}
 
+                        # Store original query for potential retry
+                        original_search_query = function_args.get("query") if function_name == "search_book" else None
+                        book_title_for_retry = None
+
                         # Translate book title to slug if needed
                         if "book_identifier" in function_args:
                             book_id = function_args["book_identifier"]
@@ -232,6 +312,7 @@ class BookMateAgent:
                             if hasattr(self, 'title_to_slug') and book_id.lower() in self.title_to_slug:
                                 original_id = book_id
                                 function_args["book_identifier"] = self.title_to_slug[book_id.lower()]
+                                book_title_for_retry = original_id  # Store title for retry context
                                 print(f"[TOOL] ✓ Translated '{original_id}' → '{function_args['book_identifier']}'")
                             else:
                                 print(f"[TOOL] ✗ NO TRANSLATION - passing '{book_id}' as-is")
@@ -241,8 +322,53 @@ class BookMateAgent:
                         # Call MCP server (already has error handling)
                         tool_result = await self.call_mcp_tool(function_name, function_args)
 
-                        print(f"[TOOL] Result length: {len(tool_result)} chars")
-                        print(f"[TOOL] Result preview: {tool_result[:200]}...")
+                        # Check if search returned 0 results and attempt retry
+                        if function_name == "search_book" and original_search_query:
+                            results_count = self._extract_search_results_count(tool_result)
+                            timer.set_num_results(results_count)
+
+                            if results_count == 0:
+                                print(f"[SEARCH] No results found for: '{original_search_query}'")
+                                print(f"[RETRY] Attempting query rephrase...")
+
+                                # Rephrase the query
+                                rephrased_query = await self._rephrase_query(
+                                    original_search_query,
+                                    book_title_for_retry
+                                )
+
+                                # Retry with rephrased query
+                                retry_args = function_args.copy()
+                                retry_args["query"] = rephrased_query
+
+                                print(f"[RETRY] Searching with rephrased query...")
+                                retry_result = await self.call_mcp_tool(function_name, retry_args)
+
+                                retry_count = self._extract_search_results_count(retry_result)
+
+                                # Track retry in metrics
+                                timer.set_retry_info(
+                                    original_query=original_search_query,
+                                    rephrased_query=rephrased_query,
+                                    retry_results=retry_count
+                                )
+
+                                if retry_count > 0:
+                                    # Use retry result since it found something
+                                    tool_result = retry_result
+                                    print(f"[RETRY] Found {retry_count} results with rephrased query")
+                                else:
+                                    # Both failed - mark as fallback to context
+                                    timer.set_fallback_to_context(True)
+                                    print(f"[RETRY] No results from retry. LLM will respond from available context.")
+                                    # Keep original tool result showing 0 results
+                                    # LLM will see this and respond from context
+                            elif results_count > 0:
+                                print(f"[SEARCH] Found {results_count} results")
+                        else:
+                            # Non-search tools - just show completion
+                            print(f"[TOOL] Completed: {function_name}")
+
                         print()
 
                         # Add tool result to conversation

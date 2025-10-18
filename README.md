@@ -7,7 +7,9 @@ A book assistant (powered by LLMs) that lets you upload books, chat with their c
 - Book Ingestion: Upload and index books with automatic chapter detection
 - AI Chat Interface: Ask questions about book content with context-aware responses
 - Hybrid Search: Combines BM25 keyword search with semantic vector search
-- Monitoring Dashboard: Track query performance, LLM quality assessments, and user feedback
+- Automatic Query Retry: When search returns no results, automatically rephrases and retries queries
+- Citations: All responses include source citations with chapter numbers and chunk IDs
+- Monitoring Dashboard: Track query performance, LLM quality assessments, user feedback, and retry statistics
 - MCP Integration: Uses Model Context Protocol for tool-based agent interactions
 
 ## Quick Start
@@ -76,6 +78,7 @@ Go to the "Monitoring" tab to view:
 - LLM self-assessments (EXCELLENT/ADEQUATE/POOR)
 - User feedback ratings
 - Tool usage statistics
+- Query retry statistics (automatic rephrasing attempts and success rates)
 
 ![Monitoring Dashboard](image-4.png)
 
@@ -222,9 +225,55 @@ psql -h localhost -U bookuser -d booksdb -c "SELECT COUNT(*), AVG(latency_ms), A
 psql -h localhost -U bookuser -d booksdb -c "SELECT query, llm_relevance_score, user_rating FROM query_metrics ORDER BY timestamp DESC LIMIT 10;"
 ```
 
+## Evaluation
+
+Initially evaluated the search results with both keyword-based and vector-based search using BM25 and Qdrant-based search.
+Refer `notebooks/02_retrieval_with_qdrant.ipynb` for details.
+
+```zsh
+# Example evaluation output for "Alice in Wonderland"
+BM25: {
+  "hit_rate_at_5": 0.49361702127659574,
+  "mrr_at_5": 0.32666666666666666,
+  "hit_rate_at_7": 0.5404255319148936,
+  "mrr_at_7": 0.33396149949341436,
+  "total_queries": 235
+}
+Semantic: {
+  "hit_rate_at_5": 0.33191489361702126,
+  "mrr_at_5": 0.2027659574468085,
+  "hit_rate_at_7": 0.42127659574468085,
+  "mrr_at_7": 0.2165450861195542,
+  "total_queries": 235
+}
+Hybrid RRF: {
+  "hit_rate_at_5": 0.48936170212765956,
+  "mrr_at_5": 0.28652482269503543,
+  "hit_rate_at_7": 0.5872340425531914,
+  "mrr_at_7": 0.3016210739614995,
+  "total_queries": 235
+}
+```
+
+Improved search performance with Hybrid RRF and BM25.
+```zsh 
+{
+  "hit_rate_at_5": 0.8141414141414142,
+  "mrr_at_5": 0.6090909090909091,
+  "hit_rate_at_7": 0.8444444444444444,
+  "mrr_at_7": 0.6138528138528138,
+  "total_queries": 495
+}
+```
+Finally, adopted the adaptive retriever approach with weighted BM25 and vector scores based on query type, leading to further improvements.
+
+See [EVALUATION.md](EVALUATION.md) for details on generating ground truth and evaluating search performance.
+
 
 
 ## References & Acknowledgements
-Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible
+**LLM Zoomcamp:** Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible
 https://datatalks.club/courses/llm-zoomcamp/ 
+
+**Project Gutenberg:** Thanks to the efforts of volunteers and organizations that provide free public domain book texts. https://www.gutenberg.org/
 

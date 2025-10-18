@@ -94,7 +94,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         else:
             output = f"Search results for '{result['query']}' in {result['book']}:\n\n"
             for i, chunk in enumerate(result['chunks'], 1):
-                output += f"Passage {i}:\n{chunk['text']}\n\n---\n\n"
+                chunk_id = chunk.get('id', 'unknown')
+
+                # Extract chapter number from chunk_id (format: slug_chapter_chunk_hash)
+                chapter_num = "?"
+                if '_' in chunk_id:
+                    parts = chunk_id.split('_')
+                    if len(parts) >= 2:
+                        chapter_num = parts[1].lstrip('0') or '0'  # Remove leading zeros
+
+                # Format citation
+                citation = f"[Chapter {chapter_num}, Source: {chunk_id}]"
+
+                output += f"Passage {i} {citation}:\n{chunk['text']}\n\n---\n\n"
 
         return [TextContent(type="text", text=output)]
 

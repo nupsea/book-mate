@@ -21,9 +21,10 @@ class MetricsPersistence:
                 INSERT INTO query_metrics (
                     query_id, timestamp, query, response, book_slug,
                     latency_ms, success, error_message, tool_calls, num_results,
-                    llm_relevance_score, llm_reasoning, user_rating, user_comment
+                    llm_relevance_score, llm_reasoning, user_rating, user_comment,
+                    retry_attempted, original_query, rephrased_query, retry_results, fallback_to_context
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (query_id) DO UPDATE SET
                     user_rating = EXCLUDED.user_rating,
                     user_comment = EXCLUDED.user_comment
@@ -41,7 +42,12 @@ class MetricsPersistence:
                 metric.llm_relevance_score.value if metric.llm_relevance_score else None,
                 metric.llm_reasoning,
                 metric.user_rating,
-                metric.user_comment
+                metric.user_comment,
+                metric.retry_attempted,
+                metric.original_query,
+                metric.rephrased_query,
+                metric.retry_results,
+                metric.fallback_to_context
             ))
         self.conn.commit()
 
@@ -63,7 +69,8 @@ class MetricsPersistence:
             cur.execute("""
                 SELECT query_id, timestamp, query, response, book_slug,
                        latency_ms, success, error_message, tool_calls, num_results,
-                       llm_relevance_score, llm_reasoning, user_rating, user_comment
+                       llm_relevance_score, llm_reasoning, user_rating, user_comment,
+                       retry_attempted, original_query, rephrased_query, retry_results, fallback_to_context
                 FROM query_metrics
                 ORDER BY timestamp DESC
                 LIMIT %s
@@ -93,7 +100,12 @@ class MetricsPersistence:
                 llm_relevance_score=llm_score,
                 llm_reasoning=row[11],
                 user_rating=row[12],
-                user_comment=row[13]
+                user_comment=row[13],
+                retry_attempted=row[14] or False,
+                original_query=row[15],
+                rephrased_query=row[16],
+                retry_results=row[17],
+                fallback_to_context=row[18] or False
             )
             metrics.append(metric)
 

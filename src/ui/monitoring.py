@@ -87,6 +87,29 @@ _No tools used yet_
     return markdown
 
 
+def format_retry_stats() -> str:
+    """Format retry statistics as markdown."""
+    retry_stats = MonitoringDashboard.get_retry_stats()
+
+    if retry_stats['total_retries'] == 0:
+        return """## Query Retry Statistics
+
+_No query retries yet_
+"""
+
+    markdown = f"""## Query Retry Statistics
+
+**Total Retries:** {retry_stats['total_retries']}
+**Successful Retries:** {retry_stats['successful_retries']} ({retry_stats['retry_success_rate']}%)
+**Failed Retries:** {retry_stats['failed_retries']}
+**Fallback to Context:** {retry_stats['fallback_to_context']}
+
+_When search returns 0 results, the system automatically rephrases and retries the query. If retry also returns 0 results, the LLM uses available context (summaries) to respond._
+"""
+
+    return markdown
+
+
 def format_latency_distribution() -> str:
     """Format latency distribution as markdown."""
     latency = MonitoringDashboard.get_latency_distribution()
@@ -139,6 +162,9 @@ def create_monitoring_interface():
                         user_display = gr.Markdown(value=format_user_feedback())
                         tool_display = gr.Markdown(value=format_tool_usage())
 
+                with gr.Row():
+                    retry_display = gr.Markdown(value=format_retry_stats())
+
             with gr.Tab("Query History"):
                 queries_table = gr.Dataframe(
                     value=MonitoringDashboard.get_recent_queries_df(limit=50),
@@ -156,6 +182,7 @@ def create_monitoring_interface():
                 format_llm_assessment(),
                 format_user_feedback(),
                 format_tool_usage(),
+                format_retry_stats(),
                 MonitoringDashboard.get_recent_queries_df(limit=50),
                 format_latency_distribution(),
                 format_recent_errors()
@@ -170,6 +197,7 @@ def create_monitoring_interface():
                 llm_display,
                 user_display,
                 tool_display,
+                retry_display,
                 queries_table,
                 latency_display,
                 errors_display
@@ -192,6 +220,7 @@ def create_monitoring_interface():
                     gr.update(),
                     gr.update(),
                     gr.update(),
+                    gr.update(),
                     gr.update()
                 )
 
@@ -203,6 +232,7 @@ def create_monitoring_interface():
                 llm_display,
                 user_display,
                 tool_display,
+                retry_display,
                 queries_table,
                 latency_display,
                 errors_display

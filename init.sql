@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS query_metrics (
     llm_reasoning TEXT,
     user_rating INTEGER CHECK (user_rating >= 1 AND user_rating <= 5),
     user_comment TEXT,
+    retry_attempted BOOLEAN DEFAULT FALSE,
+    original_query TEXT,
+    rephrased_query TEXT,
+    retry_results INTEGER,
+    fallback_to_context BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

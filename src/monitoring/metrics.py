@@ -43,6 +43,13 @@ class QueryMetric:
     # Unique ID for feedback tracking
     query_id: Optional[str] = None
 
+    # Query Retry Tracking
+    retry_attempted: bool = False
+    original_query: Optional[str] = None  # If this is a rephrased query
+    rephrased_query: Optional[str] = None  # The rephrased version
+    retry_results: Optional[int] = None  # Results from retry attempt
+    fallback_to_context: bool = False  # True if LLM used context instead of search
+
 
 class MetricsCollector:
     """Thread-safe metrics collector."""
@@ -362,6 +369,11 @@ class QueryTimer:
         self.llm_relevance_score = LLMRelevanceScore.NOT_JUDGED
         self.llm_reasoning = None
         self.query_id = None
+        self.retry_attempted = False
+        self.original_query = None
+        self.rephrased_query = None
+        self.retry_results = None
+        self.fallback_to_context = False
 
     def __enter__(self):
         self.start_time = time.time()
@@ -388,7 +400,12 @@ class QueryTimer:
             num_results=self.num_results,
             llm_relevance_score=self.llm_relevance_score,
             llm_reasoning=self.llm_reasoning,
-            query_id=self.query_id
+            query_id=self.query_id,
+            retry_attempted=self.retry_attempted,
+            original_query=self.original_query,
+            rephrased_query=self.rephrased_query,
+            retry_results=self.retry_results,
+            fallback_to_context=self.fallback_to_context
         )
 
         metrics_collector.record_query(metric)
@@ -410,3 +427,14 @@ class QueryTimer:
         """Set LLM self-assessment score."""
         self.llm_relevance_score = score
         self.llm_reasoning = reasoning
+
+    def set_retry_info(self, original_query: str, rephrased_query: str, retry_results: int):
+        """Record retry attempt information."""
+        self.retry_attempted = True
+        self.original_query = original_query
+        self.rephrased_query = rephrased_query
+        self.retry_results = retry_results
+
+    def set_fallback_to_context(self, enabled: bool = True):
+        """Mark that LLM fell back to context knowledge instead of search."""
+        self.fallback_to_context = enabled

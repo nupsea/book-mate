@@ -139,6 +139,41 @@ class MonitoringDashboard:
         return stats.get("recent_errors", [])[:limit]
 
     @staticmethod
+    def get_retry_stats() -> Dict[str, Any]:
+        """
+        Get query retry statistics.
+
+        Returns:
+            Dictionary with retry metrics:
+            - total_retries: Number of queries that triggered retry
+            - successful_retries: Retries that found results
+            - failed_retries: Retries that still returned 0 results
+            - fallback_to_context: Queries that fell back to context knowledge
+        """
+        with metrics_collector._lock:
+            total_retries = sum(1 for q in metrics_collector.queries if q.retry_attempted)
+            successful_retries = sum(
+                1 for q in metrics_collector.queries
+                if q.retry_attempted and q.retry_results and q.retry_results > 0
+            )
+            failed_retries = sum(
+                1 for q in metrics_collector.queries
+                if q.retry_attempted and (q.retry_results is None or q.retry_results == 0)
+            )
+            fallback_to_context = sum(1 for q in metrics_collector.queries if q.fallback_to_context)
+
+            return {
+                "total_retries": total_retries,
+                "successful_retries": successful_retries,
+                "failed_retries": failed_retries,
+                "fallback_to_context": fallback_to_context,
+                "retry_success_rate": round(
+                    (successful_retries / total_retries * 100) if total_retries > 0 else 0.0,
+                    2
+                )
+            }
+
+    @staticmethod
     def get_all_metrics() -> Dict[str, Any]:
         """
         Get all metrics in a single call.
