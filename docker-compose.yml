@@ -25,11 +25,6 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   app:
     build: .
@@ -54,7 +49,7 @@ services:
       postgres:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   qdrant_data: {}
