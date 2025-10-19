@@ -1,9 +1,6 @@
--- Create the main application database (if not present)
+-- Create tables in the booksdb database
 -- This runs only on first Postgres container startup
-CREATE DATABASE IF NOT EXISTS booksdb;
-
--- Switch to booksdb to create metadata tables
-\connect booksdb;
+-- The database 'booksdb' is already created by POSTGRES_DB environment variable
 
 CREATE TABLE IF NOT EXISTS books (
     book_id SERIAL PRIMARY KEY,
