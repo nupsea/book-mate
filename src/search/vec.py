@@ -1,3 +1,4 @@
+import os
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
@@ -8,7 +9,9 @@ class SemanticRetriever:
     def __init__(self, transformer="BAAI/bge-small-en") -> None:
         super().__init__()
         self.embedder = SentenceTransformer(transformer)
-        self.qdrant = QdrantClient("localhost", port=6333)
+        qdrant_host = os.getenv("QDRANT_HOST", "localhost")
+        qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
+        self.qdrant = QdrantClient(qdrant_host, port=qdrant_port)
 
         self.embeddings = []
         self.ids = []

@@ -21,10 +21,15 @@ class BookMateAgent:
 
     async def connect_to_mcp_server(self):
         """Connect to the MCP server."""
+        import os
+
+        # Pass environment variables to MCP server subprocess
+        env = dict(os.environ)
+
         server_params = StdioServerParameters(
-            command="uv",
-            args=["run", "python", "-m", "src.mcp_server.book_tools"],
-            env=None
+            command="python",
+            args=["-m", "src.mcp_server.book_tools"],
+            env=env
         )
 
         # Use async context manager correctly

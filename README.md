@@ -15,34 +15,33 @@ A book assistant (powered by LLMs) that lets you upload books, chat with their c
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+
 - Docker & Docker Compose
 - OpenAI API Key
 
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/nupsea/book-mate.git
 cd book-mate
 
 # Set up environment
 cp .env_template .env
 # Update .env with your OPENAI_API_KEY
 
-# Install dependencies
-uv pip install -e .
-
-# Start services (PostgreSQL, Qdrant) and the UI
+# Build and start all services (PostgreSQL, Qdrant, UI)
+make build
 make start
 ```
 
-### Launch the UI
+The UI will be available at http://localhost:7860
 
+**Useful commands:**
 ```bash
-uv run python -m src.ui.app
+make up      # Start all services
+make down    # Stop all services
+make logs    # View app logs
+make build   # Rebuild the app container
 ```
-
-Open http://localhost:7860 in your browser.
 
 ![Book Mate UI](image-1.png)
 
@@ -145,9 +144,17 @@ pgcli -h localhost -U bookuser -d booksdb
 
 ## CLI Usage (Advanced)
 
+> **Note**: These commands can be run either:
+> - **Inside Docker**: `docker compose exec app python -m <module>`
+> - **On host with uv**: `source .env && uv run python -m <module>` (requires uv and Python 3.12+)
+
 ### Test MCP Agent Directly
 
 ```bash
+# Inside Docker
+docker compose exec app python -m src.mcp_client.agent
+
+# Or on host with uv
 source .env
 uv run python -m src.mcp_client.agent
 ```
@@ -157,8 +164,9 @@ This runs the agent in CLI mode with a hardcoded test conversation.
 ### Query Books Programmatically
 
 **Search for content:**
-```python
-uv run python -c "
+```bash
+# Inside Docker
+docker compose exec app python -c "
 from src.flows.book_query import search_book_content
 result = search_book_content('death', 'mam', limit=5)
 print(f'\nFound {result[\"num_results\"]} results')
@@ -166,11 +174,15 @@ for i, chunk in enumerate(result['chunks'][:3], 1):
     print(f'\nPassage {i}:')
     print(chunk['text'][:200])
 "
+
+# Or with uv on host
+uv run python -c "..."
 ```
 
 **Get book summary:**
-```python
-uv run python -c "
+```bash
+# Inside Docker
+docker compose exec app python -c "
 from src.flows.book_query import get_book_summary
 result = get_book_summary('mam')
 print(result['summary'])
@@ -178,8 +190,9 @@ print(result['summary'])
 ```
 
 **Get chapter summaries:**
-```python
-uv run python -c "
+```bash
+# Inside Docker
+docker compose exec app python -c "
 from src.flows.book_query import get_chapter_summaries
 result = get_chapter_summaries('mam')
 print(f'Found {result[\"num_chapters\"]} chapters')
@@ -194,22 +207,28 @@ for ch in result['chapters'][:3]:
 If you prefer CLI ingestion over the UI:
 
 ```bash
-# Edit src/app/ingest.py to set the book slug
-# Then run:
+# Inside Docker
+docker compose exec app python -m src.app.ingest
+
+# Or with uv on host
+# Edit src/app/ingest.py to set the book slug, then:
 uv run python -m src.app.ingest
 ```
 
 ### Explore Search Indexes
 
-```python
-# Check BM25 index contents
-uv run python -c "
+```bash
+# Inside Docker
+docker compose exec app python -c "
 from src.search.hybrid import FusionRetriever
 retriever = FusionRetriever()
 retriever.load_bm25_index()
 print(f'Total documents indexed: {retriever.bm25.N}')
 print(f'First 5 document IDs: {retriever.bm25.ids[:5]}')
 "
+
+# Or with uv on host
+uv run python -c "..."
 ```
 
 ### Database Queries

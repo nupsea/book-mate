@@ -1,13 +1,17 @@
-.PHONY: up down start
+.PHONY: up down start build logs
 
 up:
 	docker compose up -d
-	@echo "Waiting for services to start..."
-	@sleep 5
-	uv run python -m src.ui.app
+	@echo "All services started! Access UI at http://localhost:7860"
+
+build:
+	docker compose build
 
 down:
 	docker compose down
 
+logs:
+	docker compose logs -f app
+
 start: up
-	@echo "All services started!"
+	@echo "Book Mate is running at http://localhost:7860"

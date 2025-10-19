@@ -10,7 +10,7 @@ DB_CONFIG = {
     "dbname": os.getenv("PG_DB", "booksdb"),
     "user": os.getenv("PG_USER", "bookuser"),
     "password": os.getenv("PG_PASS", "bookpass"),
-    "host": "localhost",
+    "host": os.getenv("PG_HOST", "localhost"),
     "port": os.getenv("PG_PORT", 5432),
 }
 

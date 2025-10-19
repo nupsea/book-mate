@@ -21,6 +21,29 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  app:
+    build: .
+    container_name: bookmate_app
+    restart: always
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PG_USER: ${PG_USER}
+      PG_PASS: ${PG_PASS}
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: booksdb
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./DATA:/app/DATA
+      - ./INDEXES:/app/INDEXES
+      - ./src:/app/src
+    depends_on:
+      - postgres
+      - qdrant
+
 volumes:
   qdrant_data: {}
   pgdata:

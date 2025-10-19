@@ -54,7 +54,7 @@ class BookMateUI:
                     break
                 except Exception as e:
                     if attempt == max_retries - 1:
-                        return f"Failed to initialize agent: {str(e)}"
+                        return f"Failed to initialize agent: {str(e)}", None
                     print(f"Init attempt {attempt + 1} failed, retrying...")
                     await asyncio.sleep(2)
 
