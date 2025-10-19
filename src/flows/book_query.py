@@ -1,8 +1,11 @@
 """
 Book query script - plain Python.
 """
+import logging
 from src.content.store import PgresStore
 from src.search.adaptive import AdaptiveRetriever
+
+logger = logging.getLogger(__name__)
 
 
 def validate_book_exists(book_identifier: str | int):
@@ -21,7 +24,7 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
     Search book content using hybrid search (BM25 + vector).
     Returns chunk IDs and fetches chunk text from Qdrant.
     """
-    print(f"Searching for: '{query}' in book: {book_identifier}")
+    logger.info(f"Searching for: '{query}' in book: {book_identifier}")
 
     try:
         # Validate book exists and get book_id
@@ -40,15 +43,15 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
         retriever = AdaptiveRetriever()
         chunk_ids = retriever.id_search(query, topk=limit * 3)  # Get more results to filter
 
-        print(f"[DEBUG] Hybrid search returned {len(chunk_ids)} chunk IDs:")
+        logger.debug(f"Hybrid search returned {len(chunk_ids)} chunk IDs:")
         for i, cid in enumerate(chunk_ids[:10], 1):  # Show first 10
-            print(f"  {i}. {cid}")
+            logger.debug(f"  {i}. {cid}")
 
         # Fetch full chunk details from Qdrant by ID
         chunks_full = retriever.vec.get_chunks_by_ids(chunk_ids)
 
-        print(f"[DEBUG] Filtering for book_identifier: '{book_identifier}'")
-        print(f"[DEBUG] Looking for chunks starting with: '{book_identifier}_'")
+        logger.debug(f"Filtering for book_identifier: '{book_identifier}'")
+        logger.debug(f"Looking for chunks starting with: '{book_identifier}_'")
 
         # Filter chunks by book_identifier and truncate text
         chunks_with_text = []
@@ -63,7 +66,7 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
                 if len(chunks_with_text) >= limit:
                     break
 
-        print(f"[DEBUG] After filtering: {len(chunks_with_text)} chunks matched")
+        logger.debug(f"After filtering: {len(chunks_with_text)} chunks matched")
 
         return {
             "query": query,
@@ -73,7 +76,7 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
             "num_results": len(chunks_with_text)
         }
     except Exception as e:
-        print(f"Search error: {e}")
+        logger.error(f"Search error: {e}")
         return {
             "query": query,
             "book": book_identifier,
@@ -116,26 +119,26 @@ def query_book(
     """
     Query a book with optional search and summary retrieval.
     """
-    print(f"Starting query for book: {book_identifier}")
+    logger.info(f"Starting query for book: {book_identifier}")
 
     validation = validate_book_exists(book_identifier)
-    print(f"Book validated - ID: {validation['book_id']}")
+    logger.info(f"Book validated - ID: {validation['book_id']}")
 
     results = {"book_id": validation['book_id']}
 
     if query:
         results["search"] = search_book_content(query, book_identifier, search_limit)
-        print(f"Search completed - Found {results['search']['num_results']} results")
+        logger.info(f"Search completed - Found {results['search']['num_results']} results")
 
     if include_chapters:
         results["chapters"] = get_chapter_summaries(book_identifier)
-        print(f"Retrieved {results['chapters']['num_chapters']} chapter summaries")
+        logger.info(f"Retrieved {results['chapters']['num_chapters']} chapter summaries")
 
     if include_book_summary:
         results["book_summary"] = get_book_summary(book_identifier)
-        print(f"Retrieved book summary ({results['book_summary']['length']} chars)")
+        logger.info(f"Retrieved book summary ({results['book_summary']['length']} chars)")
 
-    print("Query complete")
+    logger.info("Query complete")
     return results
 
 

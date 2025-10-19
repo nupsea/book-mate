@@ -1,6 +1,7 @@
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp.server.stdio
+import logging
 
 from src.flows.book_query import (
     search_book_content,
@@ -9,6 +10,7 @@ from src.flows.book_query import (
     # validate_book_exists
 )
 
+logger = logging.getLogger(__name__)
 app = Server("book-mate-server")
 
 
@@ -79,11 +81,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             limit=arguments.get("limit", 5)
         )
 
-        # Debug print
-        print(f"\n[DEBUG] Search result for '{arguments['query']}' in '{arguments['book_identifier']}':")
-        print(f"  - num_results: {result['num_results']}")
-        print(f"  - chunk_ids: {result.get('chunk_ids', [])}")
-        print(f"  - error: {result.get('error', 'None')}\n")
+        # Debug logging
+        logger.debug(f"Search result for '{arguments['query']}' in '{arguments['book_identifier']}':")
+        logger.debug(f"  - num_results: {result['num_results']}")
+        logger.debug(f"  - chunk_ids: {result.get('chunk_ids', [])}")
+        logger.debug(f"  - error: {result.get('error', 'None')}")
 
         # Format results as readable text
         if result.get("error"):

@@ -1,5 +1,9 @@
 .PHONY: up down start build logs
 
+# Include .env file
+include .env
+export
+
 up:
 	docker compose up -d
 	@echo "All services started! Access UI at http://localhost:7860"
