@@ -1,6 +1,7 @@
 """
 Main Gradio application for Book Mate.
 """
+
 import gradio as gr
 import asyncio
 import os
@@ -33,7 +34,9 @@ class BookMateUI:
                 self.agent = None
                 raise
 
-    async def chat(self, message: str, history: list, selected_book: str = None) -> tuple[str, str]:
+    async def chat(
+        self, message: str, history: list, selected_book: str = None
+    ) -> tuple[str, str]:
         """
         Handle chat messages with the agent.
 
@@ -65,14 +68,19 @@ class BookMateUI:
         if selected_book and selected_book != "none":
             # Get book title from slug
             from src.content.store import PgresStore
+
             try:
                 store = PgresStore()
                 with store.conn.cursor() as cur:
-                    cur.execute("SELECT title FROM books WHERE slug = %s", (selected_book,))
+                    cur.execute(
+                        "SELECT title FROM books WHERE slug = %s", (selected_book,)
+                    )
                     result = cur.fetchone()
                     if result:
                         book_title = result[0]
-                        print(f"[UI] Found book title for slug '{selected_book}': {book_title}")
+                        print(
+                            f"[UI] Found book title for slug '{selected_book}': {book_title}"
+                        )
                         # Only inject if not already mentioned
                         if book_title.lower() not in message.lower():
                             message = f"{message} (for the book '{book_title}')"
@@ -136,10 +144,13 @@ def create_app():
             books = get_available_books()
             new_list = format_book_list(books)
             # Show only titles in dropdown, not slugs
-            new_choices = [("Select a book...", "none")] + \
-                          [(f"{title}", slug) for slug, title, _, _, _ in books]
+            new_choices = [("Select a book...", "none")] + [
+                (f"{title}", slug) for slug, title, _, _, _ in books
+            ]
 
-            print(f"[DEBUG] Tab switched to: {evt.value}, refreshing with {len(books)} books")
+            print(
+                f"[DEBUG] Tab switched to: {evt.value}, refreshing with {len(books)} books"
+            )
 
             if evt.value == 0 or evt.index == 0:
                 # Switching to Chat tab - refresh chat book list and dropdown
@@ -151,7 +162,9 @@ def create_app():
             # Refresh both to be safe
             return new_list, gr.update(choices=new_choices), new_list
 
-        tabs.select(refresh_on_tab_change, None, [book_list, dropdown, ingest_book_list])
+        tabs.select(
+            refresh_on_tab_change, None, [book_list, dropdown, ingest_book_list]
+        )
 
         # Load book lists on startup
         def load_ingest_list():
@@ -165,8 +178,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False
-    )
+    app.launch(server_name="0.0.0.0", server_port=7860, share=False)

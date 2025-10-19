@@ -39,9 +39,8 @@ class SummaryGenerator:
             )
             return {
                 "chapter_id": sid,
-                "summary": str(resp.choices[0].message.content).strip()
+                "summary": str(resp.choices[0].message.content).strip(),
             }
-
 
     async def summarize_book(self, chapter_summaries):
         """Synthesize whole-book summary from chapter summaries."""
@@ -55,7 +54,6 @@ class SummaryGenerator:
             temperature=0.3,
         )
         return str(resp.choices[0].message.content).strip()
-
 
     async def summarize_hierarchy(self, chunks):
         """
@@ -79,5 +77,3 @@ class SummaryGenerator:
         book_summary = await self.summarize_book(chapter_summaries)
 
         return chapter_summaries, book_summary
-
-

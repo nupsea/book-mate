@@ -1,11 +1,20 @@
 from collections import defaultdict
+import logging
 
 from src.search.bm25 import BM25Retriever
 from src.search.vec import SemanticRetriever
 
+logger = logging.getLogger(__name__)
+
+
 class FusionRetriever:
 
-    def __init__(self, transformer="BAAI/bge-small-en", alpha=0.7, bm25_index_path="indexes/bm25_index.pkl") -> None:
+    def __init__(
+        self,
+        transformer="BAAI/bge-small-en",
+        alpha=0.7,
+        bm25_index_path="indexes/bm25_index.pkl",
+    ) -> None:
         self.bm25 = BM25Retriever()
         self.vec = SemanticRetriever(transformer=transformer)
         self.alpha = alpha
@@ -24,7 +33,7 @@ class FusionRetriever:
     def rrf_fusion(bm25_results, embed_results, k=7, c=60):
         """
         Fuse BM25 + Embedding rankings using Reciprocal Rank Fusion (RRF).
-        
+
         Returns:
             list of chunk_ids (top-k fused)
         """
@@ -49,7 +58,7 @@ class FusionRetriever:
         for rank, c in enumerate(embed_results, start=1):
             scores[c["id"]] += (1 - self.alpha) * (1.0 / rank)
         return [cid for cid, _ in sorted(scores.items(), key=lambda x: -x[1])[:topk]]
-    
+
     def id_search(self, query: str, topk=7, use_bm25=True):
         """
         Hybrid search with automatic BM25 index loading.
@@ -63,7 +72,7 @@ class FusionRetriever:
             try:
                 self.load_bm25_index()
             except FileNotFoundError:
-                print("Warning: BM25 index not found, using vector-only search")
+                logger.warning("BM25 index not found, using vector-only search")
                 use_bm25 = False
 
         embed_results = self.vec.search(query, topk * 2)

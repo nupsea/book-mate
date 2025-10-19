@@ -2,6 +2,7 @@
 Unit tests for search functionality (BM25, Vector, Hybrid).
 Focus on core logic without external dependencies.
 """
+
 import pytest
 from src.search.hybrid import FusionRetriever
 
@@ -14,13 +15,13 @@ class TestRRFFusion:
         bm25_results = [
             {"id": "chunk_1", "score": 10.5},
             {"id": "chunk_2", "score": 8.0},
-            {"id": "chunk_3", "score": 5.0}
+            {"id": "chunk_3", "score": 5.0},
         ]
 
         embed_results = [
             {"id": "chunk_2", "score": 0.95},
             {"id": "chunk_4", "score": 0.90},
-            {"id": "chunk_1", "score": 0.85}
+            {"id": "chunk_1", "score": 0.85},
         ]
 
         fused = FusionRetriever.rrf_fusion(bm25_results, embed_results, k=3)
@@ -41,7 +42,7 @@ class TestRRFFusion:
         """Test RRF when only one source has results."""
         bm25_results = [
             {"id": "chunk_1", "score": 10.5},
-            {"id": "chunk_2", "score": 8.0}
+            {"id": "chunk_2", "score": 8.0},
         ]
 
         fused = FusionRetriever.rrf_fusion(bm25_results, [], k=5)
@@ -89,15 +90,8 @@ class TestWeightedFusion:
         """Test with alpha=1.0 (BM25 only)."""
         retriever = FusionRetriever(alpha=1.0)
 
-        bm25_results = [
-            {"id": "chunk_1"},
-            {"id": "chunk_2"},
-            {"id": "chunk_3"}
-        ]
-        embed_results = [
-            {"id": "chunk_4"},
-            {"id": "chunk_5"}
-        ]
+        bm25_results = [{"id": "chunk_1"}, {"id": "chunk_2"}, {"id": "chunk_3"}]
+        embed_results = [{"id": "chunk_4"}, {"id": "chunk_5"}]
 
         fused = retriever.weighted_fusion(bm25_results, embed_results, topk=2)
 
@@ -109,15 +103,8 @@ class TestWeightedFusion:
         """Test with alpha=0.0 (embeddings only)."""
         retriever = FusionRetriever(alpha=0.0)
 
-        bm25_results = [
-            {"id": "chunk_1"},
-            {"id": "chunk_2"}
-        ]
-        embed_results = [
-            {"id": "chunk_4"},
-            {"id": "chunk_5"},
-            {"id": "chunk_6"}
-        ]
+        bm25_results = [{"id": "chunk_1"}, {"id": "chunk_2"}]
+        embed_results = [{"id": "chunk_4"}, {"id": "chunk_5"}, {"id": "chunk_6"}]
 
         fused = retriever.weighted_fusion(bm25_results, embed_results, topk=2)
 
@@ -129,14 +116,8 @@ class TestWeightedFusion:
         """Test with alpha=0.5 (balanced)."""
         retriever = FusionRetriever(alpha=0.5)
 
-        bm25_results = [
-            {"id": "chunk_1"},
-            {"id": "chunk_2"}
-        ]
-        embed_results = [
-            {"id": "chunk_2"},  # Overlap with BM25
-            {"id": "chunk_3"}
-        ]
+        bm25_results = [{"id": "chunk_1"}, {"id": "chunk_2"}]
+        embed_results = [{"id": "chunk_2"}, {"id": "chunk_3"}]  # Overlap with BM25
 
         fused = retriever.weighted_fusion(bm25_results, embed_results, topk=3)
 

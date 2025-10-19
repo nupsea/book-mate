@@ -1,6 +1,7 @@
 """
 Chat interface component.
 """
+
 import gradio as gr
 import asyncio
 from src.ui.utils import get_available_books, format_book_list
@@ -56,24 +57,23 @@ def create_chat_interface(ui):
                 gr.Markdown("### Chat with Books")
 
                 book_dropdown = gr.Dropdown(
-                    choices=[("Select a book...", "none")] +
-                            [(f"{title}", slug) for slug, title, _, _, _ in get_available_books()],
+                    choices=[("Select a book...", "none")]
+                    + [
+                        (f"{title}", slug)
+                        for slug, title, _, _, _ in get_available_books()
+                    ],
                     value="none",
                     label="Select Book (optional)",
-                    info="Auto-injects book title into queries"
+                    info="Auto-injects book title into queries",
                 )
 
                 chatbot = gr.Chatbot(
-                    height=450,
-                    show_label=False,
-                    avatar_images=(None, None)
+                    height=450, show_label=False, avatar_images=(None, None)
                 )
 
                 with gr.Row():
                     msg = gr.Textbox(
-                        placeholder="Ask about a book...",
-                        show_label=False,
-                        scale=9
+                        placeholder="Ask about a book...", show_label=False, scale=9
                     )
                     send_btn = gr.Button("Send", scale=1, variant="primary")
 
@@ -91,23 +91,27 @@ def create_chat_interface(ui):
                                 ("★★", 2),
                                 ("★★★", 3),
                                 ("★★★★", 4),
-                                ("★★★★★", 5)
+                                ("★★★★★", 5),
                             ],
                             label="",
-                            show_label=False
+                            show_label=False,
                         )
                     with gr.Column(scale=1):
-                        submit_rating_btn = gr.Button("Submit", variant="primary", size="sm")
+                        submit_rating_btn = gr.Button(
+                            "Submit", variant="primary", size="sm"
+                        )
 
                 feedback_status = gr.Textbox(visible=False, show_label=False)
 
-                gr.Markdown("""
+                gr.Markdown(
+                    """
                 **Tips:**
                 - Select a book from dropdown or mention the title directly
                 - Example: "What does Marcus say about virtue?"
                 - Available books listed on the right
                 - Rate responses to help improve the system!
-                """)
+                """
+                )
 
             with gr.Column(scale=1):
                 gr.Markdown("### Library")
@@ -116,26 +120,32 @@ def create_chat_interface(ui):
                     headers=["Slug", "Title", "Author", "Chunks", "Added"],
                     datatype=["str", "str", "str", "number", "str"],
                     interactive=False,
-                    wrap=True
+                    wrap=True,
                 )
 
         # Event handlers - wrap to pass ui
         async def handle_submit(msg_text, history, book_sel):
-            result_history, result_msg, feedback_update = await respond(msg_text, history, book_sel, ui)
+            result_history, result_msg, feedback_update = await respond(
+                msg_text, history, book_sel, ui
+            )
             return result_history, result_msg, feedback_update
 
         def handle_rating(rating, history):
             status = submit_feedback(rating, history)
             return status, gr.update(visible=False)
 
-        msg.submit(handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row])
-        send_btn.click(handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row])
-        clear_btn.click(lambda: ([], gr.update(visible=False)), None, [chatbot, feedback_row])
+        msg.submit(
+            handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row]
+        )
+        send_btn.click(
+            handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row]
+        )
+        clear_btn.click(
+            lambda: ([], gr.update(visible=False)), None, [chatbot, feedback_row]
+        )
 
         submit_rating_btn.click(
-            handle_rating,
-            [rating_radio, chatbot],
-            [feedback_status, feedback_row]
+            handle_rating, [rating_radio, chatbot], [feedback_status, feedback_row]
         )
 
         # Load book list on page load

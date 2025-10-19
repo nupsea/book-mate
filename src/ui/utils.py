@@ -1,6 +1,7 @@
 """
 Utility functions for the UI.
 """
+
 import re
 from src.content.store import PgresStore
 
@@ -10,11 +11,13 @@ def get_available_books():
     try:
         store = PgresStore()
         with store.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT slug, title, author, num_chunks, added_at
                 FROM books
                 ORDER BY added_at DESC
-            """)
+            """
+            )
             books = cur.fetchall()
         return books
     except Exception as e:
@@ -35,8 +38,11 @@ def validate_slug(slug: str) -> tuple[bool, str]:
     slug = slug.strip().lower()
 
     # Check format (lowercase letters, numbers, hyphens, underscores only)
-    if not re.match(r'^[a-z0-9_-]+$', slug):
-        return False, "Slug must contain only lowercase letters, numbers, hyphens, and underscores"
+    if not re.match(r"^[a-z0-9_-]+$", slug):
+        return (
+            False,
+            "Slug must contain only lowercase letters, numbers, hyphens, and underscores",
+        )
 
     # Check length
     if len(slug) < 2 or len(slug) > 20:
@@ -64,23 +70,38 @@ def detect_chapter_pattern(file_path: str) -> tuple[str, str]:
         (pattern, description)
     """
     patterns = [
-        (r"^(?:CHAPTER [IVXLCDM]+)\s*\n", "CHAPTER + Roman numerals (e.g., CHAPTER I, CHAPTER II)"),
+        (
+            r"^(?:CHAPTER [IVXLCDM]+)\s*\n",
+            "CHAPTER + Roman numerals (e.g., CHAPTER I, CHAPTER II)",
+        ),
         (r"^(?:BOOK [IVXLCDM]+)\s*\n", "BOOK + Roman numerals (e.g., BOOK I, BOOK II)"),
-        (r"^(?:[IVXLCDM]+\. [A-Z])", "Roman numeral + period + title (e.g., I. TITLE, II. TITLE)"),
-        (r"^(?:Chapter \d+)\s*\n", "Chapter + Arabic numerals (e.g., Chapter 1, Chapter 2)"),
+        (
+            r"^(?:[IVXLCDM]+\. [A-Z])",
+            "Roman numeral + period + title (e.g., I. TITLE, II. TITLE)",
+        ),
+        (
+            r"^(?:Chapter \d+)\s*\n",
+            "Chapter + Arabic numerals (e.g., Chapter 1, Chapter 2)",
+        ),
         (r"^(?:PART [IVXLCDM]+)\s*\n", "PART + Roman numerals (e.g., PART I, PART II)"),
-        (r"^(?:\d+\.\s+[A-Z])", "Arabic numeral + period + title (e.g., 1. Title, 2. Title)"),
+        (
+            r"^(?:\d+\.\s+[A-Z])",
+            "Arabic numeral + period + title (e.g., 1. Title, 2. Title)",
+        ),
         (r"^(?:\d+\.)\s*$", "Numbered sections only (e.g., 1., 2., 3.)"),
     ]
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read(100000)  # Read first 100KB
 
         for pattern, description in patterns:
             matches = re.findall(pattern, content, re.MULTILINE)
             if len(matches) >= 2:  # Found at least 2 chapters
-                return pattern, f"Detected: {description} (found {len(matches)} matches)"
+                return (
+                    pattern,
+                    f"Detected: {description} (found {len(matches)} matches)",
+                )
 
         return "", "No pattern detected. Please provide custom pattern."
     except Exception as e:
@@ -108,16 +129,13 @@ def extract_chapter_info_from_chunks(slug: str):
         book_chunks = [cid for cid in retriever.bm25.ids if cid.startswith(f"{slug}_")]
 
         if not book_chunks:
-            return {
-                "status": "error",
-                "message": f"No chunks found for book '{slug}'"
-            }
+            return {"status": "error", "message": f"No chunks found for book '{slug}'"}
 
         # Extract chapter numbers
         chapter_numbers = set()
         for chunk_id in book_chunks:
             # chunk_id format: mma_01_001_abc123
-            parts = chunk_id.split('_')
+            parts = chunk_id.split("_")
             if len(parts) >= 2:
                 chapter_num = parts[1]
                 chapter_numbers.add(chapter_num)
@@ -130,15 +148,16 @@ def extract_chapter_info_from_chunks(slug: str):
             "total_chapters": len(sorted_chapters),
             "first_chunk": book_chunks[0] if book_chunks else "N/A",
             "last_chunk": book_chunks[-1] if book_chunks else "N/A",
-            "chapter_range": f"{sorted_chapters[0]} to {sorted_chapters[-1]}" if sorted_chapters else "N/A",
-            "chapters": sorted_chapters
+            "chapter_range": (
+                f"{sorted_chapters[0]} to {sorted_chapters[-1]}"
+                if sorted_chapters
+                else "N/A"
+            ),
+            "chapters": sorted_chapters,
         }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Error analyzing chunks: {str(e)}"
-        }
+        return {"status": "error", "message": f"Error analyzing chunks: {str(e)}"}
 
 
 def format_book_list(books):
@@ -154,13 +173,15 @@ def format_book_list(books):
         else:
             date_str = "Unknown"
 
-        data.append([
-            slug,
-            title,
-            author or "Unknown",
-            num_chunks if num_chunks else 0,
-            date_str
-        ])
+        data.append(
+            [
+                slug,
+                title,
+                author or "Unknown",
+                num_chunks if num_chunks else 0,
+                date_str,
+            ]
+        )
 
     return data
 
@@ -202,7 +223,9 @@ def delete_book(slug: str) -> tuple[bool, str, int]:
             retriever.load_bm25_index()
 
         # Filter out chunks for this book
-        book_chunk_ids = [cid for cid in retriever.bm25.ids if cid.startswith(f"{slug}_")]
+        book_chunk_ids = [
+            cid for cid in retriever.bm25.ids if cid.startswith(f"{slug}_")
+        ]
         deleted_chunks = len(book_chunk_ids)
 
         if book_chunk_ids:
@@ -224,15 +247,8 @@ def delete_book(slug: str) -> tuple[bool, str, int]:
             retriever.qdrant_client.delete(
                 collection_name=retriever.collection_name,
                 points_selector={
-                    "filter": {
-                        "must": [
-                            {
-                                "key": "book_slug",
-                                "match": {"value": slug}
-                            }
-                        ]
-                    }
-                }
+                    "filter": {"must": [{"key": "book_slug", "match": {"value": slug}}]}
+                },
             )
         except Exception as e:
             qdrant_success = False
@@ -240,9 +256,17 @@ def delete_book(slug: str) -> tuple[bool, str, int]:
 
         # Build success message
         if qdrant_success:
-            return True, f"[SUCCESS] Deleted '{book_title}' ({deleted_chunks} chunks)", deleted_chunks
+            return (
+                True,
+                f"[SUCCESS] Deleted '{book_title}' ({deleted_chunks} chunks)",
+                deleted_chunks,
+            )
         else:
-            return True, f"[WARNING] Book '{book_title}' deleted, but Qdrant cleanup failed: {qdrant_error}", deleted_chunks
+            return (
+                True,
+                f"[WARNING] Book '{book_title}' deleted, but Qdrant cleanup failed: {qdrant_error}",
+                deleted_chunks,
+            )
 
     except Exception as e:
         return False, f"[ERROR] Failed to delete book: {str(e)}", 0

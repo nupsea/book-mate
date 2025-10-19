@@ -2,12 +2,21 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp.server.stdio
 import logging
+import sys
 
 from src.flows.book_query import (
     search_book_content,
     get_book_summary,
-    get_chapter_summaries
+    get_chapter_summaries,
     # validate_book_exists
+)
+
+# Configure logging to use stderr (CRITICAL for MCP - stdout is reserved for JSON-RPC)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
+    force=True,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,22 +32,19 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query"
-                    },
+                    "query": {"type": "string", "description": "The search query"},
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Number of results to return",
-                        "default": 5
-                    }
+                        "default": 5,
+                    },
                 },
-                "required": ["query", "book_identifier"]
-            }
+                "required": ["query", "book_identifier"],
+            },
         ),
         Tool(
             name="get_book_summary",
@@ -48,11 +54,11 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
                     }
                 },
-                "required": ["book_identifier"]
-            }
+                "required": ["book_identifier"],
+            },
         ),
         Tool(
             name="get_chapter_summaries",
@@ -62,12 +68,12 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')"
+                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
                     }
                 },
-                "required": ["book_identifier"]
-            }
-        )
+                "required": ["book_identifier"],
+            },
+        ),
     ]
 
 
@@ -78,11 +84,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         result = search_book_content(
             query=arguments["query"],
             book_identifier=arguments["book_identifier"],
-            limit=arguments.get("limit", 5)
+            limit=arguments.get("limit", 5),
         )
 
         # Debug logging
-        logger.debug(f"Search result for '{arguments['query']}' in '{arguments['book_identifier']}':")
+        logger.debug(
+            f"Search result for '{arguments['query']}' in '{arguments['book_identifier']}':"
+        )
         logger.debug(f"  - num_results: {result['num_results']}")
         logger.debug(f"  - chunk_ids: {result.get('chunk_ids', [])}")
         logger.debug(f"  - error: {result.get('error', 'None')}")
@@ -91,19 +99,23 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if result.get("error"):
             return [TextContent(type="text", text=f"Error: {result['error']}")]
 
-        if result['num_results'] == 0:
-            output = f"No results found for '{result['query']}' in book '{result['book']}'."
+        if result["num_results"] == 0:
+            output = (
+                f"No results found for '{result['query']}' in book '{result['book']}'."
+            )
         else:
             output = f"Search results for '{result['query']}' in {result['book']}:\n\n"
-            for i, chunk in enumerate(result['chunks'], 1):
-                chunk_id = chunk.get('id', 'unknown')
+            for i, chunk in enumerate(result["chunks"], 1):
+                chunk_id = chunk.get("id", "unknown")
 
                 # Extract chapter number from chunk_id (format: slug_chapter_chunk_hash)
                 chapter_num = "?"
-                if '_' in chunk_id:
-                    parts = chunk_id.split('_')
+                if "_" in chunk_id:
+                    parts = chunk_id.split("_")
                     if len(parts) >= 2:
-                        chapter_num = parts[1].lstrip('0') or '0'  # Remove leading zeros
+                        chapter_num = (
+                            parts[1].lstrip("0") or "0"
+                        )  # Remove leading zeros
 
                 # Format citation
                 citation = f"[Chapter {chapter_num}, Source: {chunk_id}]"
@@ -114,13 +126,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
     elif name == "get_book_summary":
         result = get_book_summary(arguments["book_identifier"])
-        return [TextContent(type="text", text=result["summary"] or "No summary available")]
+        return [
+            TextContent(type="text", text=result["summary"] or "No summary available")
+        ]
 
     elif name == "get_chapter_summaries":
         result = get_chapter_summaries(arguments["book_identifier"])
 
         output = f"Found {result['num_chapters']} chapters:\n\n"
-        for ch in result['chapters']:
+        for ch in result["chapters"]:
             output += f"Chapter {ch['chapter_id']}:\n{ch['summary']}\n\n"
 
         return [TextContent(type="text", text=output)]
@@ -132,13 +146,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 async def main():
     """Run the MCP server using stdio transport."""
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+        await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

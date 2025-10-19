@@ -2,6 +2,7 @@
 UI-agnostic dashboard data provider for monitoring metrics.
 Can be used with Gradio, Grafana, Streamlit, or any other visualization tool.
 """
+
 from typing import Dict, List, Any
 import pandas as pd
 from src.monitoring.metrics import metrics_collector
@@ -25,7 +26,7 @@ class MonitoringDashboard:
             "success_rate": stats["success_rate"],
             "avg_latency_ms": stats["avg_latency_ms"],
             "error_count": stats["error_count"],
-            "success_count": stats["success_count"]
+            "success_count": stats["success_count"],
         }
 
     @staticmethod
@@ -43,15 +44,27 @@ class MonitoringDashboard:
             "judged_queries": llm_data.get("judged_queries", 0),
             "distribution": llm_data.get("distribution", {}),
             "scores": {
-                "EXCELLENT": llm_data.get("distribution", {}).get("EXCELLENT", {}).get("count", 0),
-                "ADEQUATE": llm_data.get("distribution", {}).get("ADEQUATE", {}).get("count", 0),
-                "POOR": llm_data.get("distribution", {}).get("POOR", {}).get("count", 0)
+                "EXCELLENT": llm_data.get("distribution", {})
+                .get("EXCELLENT", {})
+                .get("count", 0),
+                "ADEQUATE": llm_data.get("distribution", {})
+                .get("ADEQUATE", {})
+                .get("count", 0),
+                "POOR": llm_data.get("distribution", {})
+                .get("POOR", {})
+                .get("count", 0),
             },
             "percentages": {
-                "EXCELLENT": llm_data.get("distribution", {}).get("EXCELLENT", {}).get("percentage", 0),
-                "ADEQUATE": llm_data.get("distribution", {}).get("ADEQUATE", {}).get("percentage", 0),
-                "POOR": llm_data.get("distribution", {}).get("POOR", {}).get("percentage", 0)
-            }
+                "EXCELLENT": llm_data.get("distribution", {})
+                .get("EXCELLENT", {})
+                .get("percentage", 0),
+                "ADEQUATE": llm_data.get("distribution", {})
+                .get("ADEQUATE", {})
+                .get("percentage", 0),
+                "POOR": llm_data.get("distribution", {})
+                .get("POOR", {})
+                .get("percentage", 0),
+            },
         }
 
     @staticmethod
@@ -69,7 +82,7 @@ class MonitoringDashboard:
             return {
                 "rated_queries": 0,
                 "avg_rating": 0.0,
-                "rating_distribution": {i: 0 for i in range(1, 6)}
+                "rating_distribution": {i: 0 for i in range(1, 6)},
             }
 
         rating_dist = user_feedback.get("rating_distribution", {})
@@ -79,7 +92,7 @@ class MonitoringDashboard:
             "avg_rating": user_feedback["avg_rating"],
             "rating_distribution": {
                 i: rating_dist.get(f"{i}_stars", 0) for i in range(1, 6)
-            }
+            },
         }
 
     @staticmethod
@@ -117,10 +130,18 @@ class MonitoringDashboard:
         queries = metrics_collector.get_recent_queries(limit=limit)
 
         if not queries:
-            return pd.DataFrame(columns=[
-                "query_id", "timestamp", "query", "book", "latency_ms",
-                "success", "llm_score", "user_rating"
-            ])
+            return pd.DataFrame(
+                columns=[
+                    "query_id",
+                    "timestamp",
+                    "query",
+                    "book",
+                    "latency_ms",
+                    "success",
+                    "llm_score",
+                    "user_rating",
+                ]
+            )
 
         return pd.DataFrame(queries)
 
@@ -151,16 +172,23 @@ class MonitoringDashboard:
             - fallback_to_context: Queries that fell back to context knowledge
         """
         with metrics_collector._lock:
-            total_retries = sum(1 for q in metrics_collector.queries if q.retry_attempted)
+            total_retries = sum(
+                1 for q in metrics_collector.queries if q.retry_attempted
+            )
             successful_retries = sum(
-                1 for q in metrics_collector.queries
+                1
+                for q in metrics_collector.queries
                 if q.retry_attempted and q.retry_results and q.retry_results > 0
             )
             failed_retries = sum(
-                1 for q in metrics_collector.queries
-                if q.retry_attempted and (q.retry_results is None or q.retry_results == 0)
+                1
+                for q in metrics_collector.queries
+                if q.retry_attempted
+                and (q.retry_results is None or q.retry_results == 0)
             )
-            fallback_to_context = sum(1 for q in metrics_collector.queries if q.fallback_to_context)
+            fallback_to_context = sum(
+                1 for q in metrics_collector.queries if q.fallback_to_context
+            )
 
             return {
                 "total_retries": total_retries,
@@ -168,9 +196,13 @@ class MonitoringDashboard:
                 "failed_retries": failed_retries,
                 "fallback_to_context": fallback_to_context,
                 "retry_success_rate": round(
-                    (successful_retries / total_retries * 100) if total_retries > 0 else 0.0,
-                    2
-                )
+                    (
+                        (successful_retries / total_retries * 100)
+                        if total_retries > 0
+                        else 0.0
+                    ),
+                    2,
+                ),
             }
 
     @staticmethod
@@ -188,6 +220,8 @@ class MonitoringDashboard:
             "user_feedback": MonitoringDashboard.get_user_feedback_data(),
             "tool_usage": MonitoringDashboard.get_tool_usage(),
             "latency_distribution": MonitoringDashboard.get_latency_distribution(),
-            "recent_queries": MonitoringDashboard.get_recent_queries_df().to_dict(orient="records"),
-            "recent_errors": MonitoringDashboard.get_recent_errors()
+            "recent_queries": MonitoringDashboard.get_recent_queries_df().to_dict(
+                orient="records"
+            ),
+            "recent_errors": MonitoringDashboard.get_recent_errors(),
         }

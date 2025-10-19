@@ -14,6 +14,7 @@ DB_CONFIG = {
     "port": os.getenv("PG_PORT", 5432),
 }
 
+
 class PgresStore:
 
     def __init__(self, conn=None) -> None:
@@ -68,13 +69,20 @@ class PgresStore:
         self.conn.commit()
         return deleted
 
-    def store_book_metadata(self, slug: str, title: str, author: str = None,
-                           num_chunks: int = None, num_chars: int = None) -> int:
+    def store_book_metadata(
+        self,
+        slug: str,
+        title: str,
+        author: str = None,
+        num_chunks: int = None,
+        num_chars: int = None,
+    ) -> int:
         """
         Insert or update book metadata. Returns book_id.
         """
         with self.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO books (slug, title, author, num_chunks, num_chars)
                 VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (slug) DO UPDATE
@@ -83,12 +91,16 @@ class PgresStore:
                     num_chunks = excluded.num_chunks,
                     num_chars = excluded.num_chars
                 RETURNING book_id
-            """, (slug, title, author, num_chunks, num_chars))
+            """,
+                (slug, title, author, num_chunks, num_chars),
+            )
             book_id = cur.fetchone()[0]
         self.conn.commit()
         return book_id
 
-    def store_summaries(self, book_identifier: int | str, chapter_summaries: list, book_summary: str):
+    def store_summaries(
+        self, book_identifier: int | str, chapter_summaries: list, book_summary: str
+    ):
         """
         Store chapter and book summaries.
         book_identifier can be either book_id (int) or slug (str).
@@ -100,23 +112,31 @@ class PgresStore:
         with self.conn.cursor() as cur:
             # Insert chapters
             rows = [(book_id, c["chapter_id"], c["summary"]) for c in chapter_summaries]
-            execute_values(cur, """
+            execute_values(
+                cur,
+                """
                 INSERT INTO chapter_summaries (book_id, chapter_id, summary)
                 VALUES %s
                 ON CONFLICT (book_id, chapter_id) DO UPDATE SET summary = excluded.summary
-            """, rows)
+            """,
+                rows,
+            )
 
             # Insert book summary
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO book_summaries (book_id, summary)
                 VALUES (%s, %s)
                 ON CONFLICT (book_id) DO UPDATE SET summary = excluded.summary
-            """, (book_id, book_summary))
+            """,
+                (book_id, book_summary),
+            )
 
         self.conn.commit()
 
-
-    def get_chapter_summary(self, book_identifier: int | str, chapter_id: int) -> str | None:
+    def get_chapter_summary(
+        self, book_identifier: int | str, chapter_id: int
+    ) -> str | None:
         """
         Fetch one chapter summary from DB.
         book_identifier can be either book_id (int) or slug (str).
@@ -137,8 +157,9 @@ class PgresStore:
             row = cur.fetchone()
         return row[0] if row else None
 
-
-    def get_all_chapter_summaries(self, book_identifier: int | str) -> list[tuple[int, str]]:
+    def get_all_chapter_summaries(
+        self, book_identifier: int | str
+    ) -> list[tuple[int, str]]:
         """
         Fetch all chapter summaries for a book, ordered by chapter_id.
         book_identifier can be either book_id (int) or slug (str).
@@ -160,7 +181,6 @@ class PgresStore:
             rows = cur.fetchall()
         return rows
 
-
     def get_book_summary(self, book_identifier: int | str) -> str | None:
         """
         Fetch the overall book summary.
@@ -181,4 +201,3 @@ class PgresStore:
             )
             row = cur.fetchone()
         return row[0] if row else None
-            

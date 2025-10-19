@@ -4,6 +4,7 @@ Test cases for chapter pattern builder.
 This module tests the pattern builder that converts user-friendly chapter
 examples into regex patterns for book ingestion.
 """
+
 import pytest
 from src.ui.pattern_builder import build_pattern_from_example, validate_pattern_on_file
 

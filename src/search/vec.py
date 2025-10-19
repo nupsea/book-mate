@@ -1,6 +1,10 @@
 import os
+import logging
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
+
+logger = logging.getLogger(__name__)
+
 
 class SemanticRetriever:
 
@@ -21,44 +25,51 @@ class SemanticRetriever:
         vecs = self.embedder.encode(texts, normalize_embeddings=True).tolist()
         return vecs
 
-
     def build_index(self, chunks):
 
         vectors = self.embed_batch(chunks)
-        print("Vector shape:", len(vectors), len(vectors[0]))
+        logger.info("Vector shape: %d x %d", len(vectors), len(vectors[0]))
 
         if not self.qdrant.collection_exists(SemanticRetriever.COLLECTION):
             self.qdrant.create_collection(
                 collection_name=SemanticRetriever.COLLECTION,
                 vectors_config=models.VectorParams(
-                    size=len(vectors[0]),
-                    distance=models.Distance.COSINE
-                )
+                    size=len(vectors[0]), distance=models.Distance.COSINE
+                ),
             )
 
         # Upsert points using chunk ID hash for unique identification
         import hashlib
+
         self.qdrant.upsert(
             collection_name=SemanticRetriever.COLLECTION,
             points=[
                 models.PointStruct(
-                    id=int(hashlib.md5(chunks[i]["id"].encode()).hexdigest()[:16], 16) % (10**9),
+                    id=int(hashlib.md5(chunks[i]["id"].encode()).hexdigest()[:16], 16)
+                    % (10**9),
                     vector=vectors[i],
-                    payload=chunks[i]
+                    payload=chunks[i],
                 )
                 for i in range(len(chunks))
-            ]
+            ],
         )
-        print(f" ## Inserted: {len(chunks)} chunks into Qdrant")
+        logger.info("Inserted %d chunks into Qdrant", len(chunks))
 
     def search(self, query, topk=7):
         if not self.qdrant.collection_exists(SemanticRetriever.COLLECTION):
-            print(f"Warning: Collection '{SemanticRetriever.COLLECTION}' does not exist in Qdrant")
+            logger.warning(
+                "Collection '%s' does not exist in Qdrant", SemanticRetriever.COLLECTION
+            )
             return []
 
         vec = self.embedder.encode([query], normalize_embeddings=True)[0].tolist()
-        hits = self.qdrant.search(collection_name=SemanticRetriever.COLLECTION, query_vector=vec, limit=topk)
-        return [{"id": h.payload["id"], "text": h.payload["text"], "score": h.score} for h in hits]
+        hits = self.qdrant.search(
+            collection_name=SemanticRetriever.COLLECTION, query_vector=vec, limit=topk
+        )
+        return [
+            {"id": h.payload["id"], "text": h.payload["text"], "score": h.score}
+            for h in hits
+        ]
 
     def id_search(self, query: str, topk=7):
         search_results = self.search(query, topk)
@@ -70,21 +81,22 @@ class SemanticRetriever:
             return []
 
         import hashlib
+
         results = []
         for chunk_id in chunk_ids:
-            point_id = int(hashlib.md5(chunk_id.encode()).hexdigest()[:16], 16) % (10**9)
+            point_id = int(hashlib.md5(chunk_id.encode()).hexdigest()[:16], 16) % (
+                10**9
+            )
             try:
                 point = self.qdrant.retrieve(
-                    collection_name=SemanticRetriever.COLLECTION,
-                    ids=[point_id]
+                    collection_name=SemanticRetriever.COLLECTION, ids=[point_id]
                 )
                 if point:
-                    results.append({
-                        "id": point[0].payload["id"],
-                        "text": point[0].payload["text"]
-                    })
+                    results.append(
+                        {"id": point[0].payload["id"], "text": point[0].payload["text"]}
+                    )
             except Exception as e:
-                print(f"Warning: Could not retrieve chunk {chunk_id}: {e}")
+                logger.warning("Could not retrieve chunk %s: %s", chunk_id, e)
                 results.append({"id": chunk_id, "text": "[Text not found]"})
         return results
 
@@ -92,4 +104,4 @@ class SemanticRetriever:
         self.embeddings = []
         self.ids = []
         self.qdrant.delete_collection(SemanticRetriever.COLLECTION)
-        print("Semantic index cleared.")
+        logger.info("Semantic index cleared.")

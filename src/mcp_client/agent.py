@@ -1,6 +1,7 @@
 """
 MCP Client using OpenAI for function calling.
 """
+
 import asyncio
 import json
 from mcp import ClientSession, StdioServerParameters
@@ -27,9 +28,7 @@ class BookMateAgent:
         env = dict(os.environ)
 
         server_params = StdioServerParameters(
-            command="python",
-            args=["-m", "src.mcp_server.book_tools"],
-            env=env
+            command="python", args=["-m", "src.mcp_server.book_tools"], env=env
         )
 
         # Use async context manager correctly
@@ -44,31 +43,39 @@ class BookMateAgent:
         response = await self.session.list_tools()
         self.tools_cache = self._convert_mcp_tools_to_openai(response.tools)
 
-        print(f"Connected to MCP server. Available tools: {[t['function']['name'] for t in self.tools_cache]}")
+        print(
+            f"Connected to MCP server. Available tools: {[t['function']['name'] for t in self.tools_cache]}"
+        )
 
     def _convert_mcp_tools_to_openai(self, mcp_tools) -> list[dict]:
         """Convert MCP tool format to OpenAI function calling format."""
         openai_tools = []
         for tool in mcp_tools:
-            openai_tools.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.inputSchema
+            openai_tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.inputSchema,
+                    },
                 }
-            })
+            )
         return openai_tools
 
     async def call_mcp_tool(self, tool_name: str, arguments: dict) -> str:
         """Execute a tool call via MCP server with error handling."""
         try:
             if not self.session:
-                raise RuntimeError("MCP session not initialized. Call connect_to_mcp_server() first.")
+                raise RuntimeError(
+                    "MCP session not initialized. Call connect_to_mcp_server() first."
+                )
 
             result = await self.session.call_tool(tool_name, arguments)
             # Combine all text content from the response
-            text_content = "\n".join([item.text for item in result.content if hasattr(item, 'text')])
+            text_content = "\n".join(
+                [item.text for item in result.content if hasattr(item, "text")]
+            )
 
             if not text_content:
                 return f"Tool {tool_name} returned no content."
@@ -88,6 +95,7 @@ class BookMateAgent:
         """
         try:
             from src.content.store import PgresStore
+
             store = PgresStore()
             with store.conn.cursor() as cur:
                 cur.execute("SELECT slug, title, author FROM books ORDER BY title")
@@ -97,15 +105,15 @@ class BookMateAgent:
                 return "No books currently available in the library.", {}
 
             # Create user-friendly list (no slugs exposed)
-            book_list = "\n".join([
-                f"- {title}" + (f" by {author}" if author else "")
-                for slug, title, author in books
-            ])
+            book_list = "\n".join(
+                [
+                    f"- {title}" + (f" by {author}" if author else "")
+                    for slug, title, author in books
+                ]
+            )
 
             # Create mapping for internal use
-            title_to_slug = {
-                title.lower(): slug for slug, title, _ in books
-            }
+            title_to_slug = {title.lower(): slug for slug, title, _ in books}
 
             return f"Available books:\n{book_list}", title_to_slug
         except Exception as e:
@@ -140,10 +148,13 @@ Return ONLY the rephrased query, nothing else."""
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a search query optimization assistant."},
-                    {"role": "user", "content": rephrase_prompt}
+                    {
+                        "role": "system",
+                        "content": "You are a search query optimization assistant.",
+                    },
+                    {"role": "user", "content": rephrase_prompt},
                 ],
-                temperature=0.3
+                temperature=0.3,
             )
 
             rephrased = response.choices[0].message.content.strip()
@@ -165,7 +176,8 @@ Return ONLY the rephrased query, nothing else."""
         try:
             # Look for "Found X results" pattern
             import re
-            match = re.search(r'Found (\d+) results?', tool_result)
+
+            match = re.search(r"Found (\d+) results?", tool_result)
             if match:
                 return int(match.group(1))
 
@@ -178,7 +190,9 @@ Return ONLY the rephrased query, nothing else."""
             print(f"[RETRY] Error parsing search results: {e}")
             return -1
 
-    async def chat(self, user_message: str, conversation_history: list = None) -> tuple[str, list, str]:
+    async def chat(
+        self, user_message: str, conversation_history: list = None
+    ) -> tuple[str, list, str]:
         """
         Send a message and handle tool calls automatically.
 
@@ -188,14 +202,18 @@ Return ONLY the rephrased query, nothing else."""
         print(f"\n{'='*80}")
         print(f"[CHAT] NEW REQUEST")
         print(f"[CHAT] User message: {user_message}")
-        print(f"[CHAT] Conversation history length: {len(conversation_history) if conversation_history else 0}")
+        print(
+            f"[CHAT] Conversation history length: {len(conversation_history) if conversation_history else 0}"
+        )
         print(f"{'='*80}\n")
 
         # Start monitoring
         with QueryTimer(user_message, None) as timer:
             try:
                 if not self.session:
-                    raise RuntimeError("MCP session not initialized. Call connect_to_mcp_server() first.")
+                    raise RuntimeError(
+                        "MCP session not initialized. Call connect_to_mcp_server() first."
+                    )
 
                 if not user_message or not user_message.strip():
                     raise ValueError("User message cannot be empty.")
@@ -234,13 +252,15 @@ Return ONLY the rephrased query, nothing else."""
                                 f"7. If no data exists in tools, clearly state you don't have that information - DO NOT fabricate\n\n"
                                 f"{available_books}\n\n"
                                 f"Remember: Always call tools first, and cite your sources when using search results."
-                            )
+                            ),
                         }
                     ]
                 else:
-                    print(f"[CHAT] CONTINUING conversation with {len(conversation_history)} messages")
+                    print(
+                        f"[CHAT] CONTINUING conversation with {len(conversation_history)} messages"
+                    )
                     # For continuing conversations, use existing mapping
-                    if not hasattr(self, 'title_to_slug'):
+                    if not hasattr(self, "title_to_slug"):
                         _, self.title_to_slug = self._get_available_books()
                     print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
 
@@ -249,15 +269,17 @@ Return ONLY the rephrased query, nothing else."""
 
                 print(f"[CHAT] Full conversation being sent to LLM:")
                 for i, msg in enumerate(conversation_history):
-                    role = msg.get('role', 'unknown')
-                    content = msg.get('content', '')
-                    if role == 'system':
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")
+                    if role == "system":
                         print(f"  [{i}] SYSTEM: {content[:200]}...")
-                    elif role == 'user':
+                    elif role == "user":
                         print(f"  [{i}] USER: {content}")
-                    elif role == 'assistant':
-                        print(f"  [{i}] ASSISTANT: {content[:100] if content else '<tool_calls>'}")
-                    elif role == 'tool':
+                    elif role == "assistant":
+                        print(
+                            f"  [{i}] ASSISTANT: {content[:100] if content else '<tool_calls>'}"
+                        )
+                    elif role == "tool":
                         print(f"  [{i}] TOOL: {content[:100]}...")
                 print()
 
@@ -266,7 +288,7 @@ Return ONLY the rephrased query, nothing else."""
                     model="gpt-4o-mini",
                     messages=conversation_history,
                     tools=self.tools_cache,
-                    tool_choice="auto"
+                    tool_choice="auto",
                 )
 
                 assistant_message = response.choices[0].message
@@ -274,21 +296,23 @@ Return ONLY the rephrased query, nothing else."""
                 # Check if the model wants to call tools
                 if assistant_message.tool_calls:
                     # Add assistant's tool call request to history
-                    conversation_history.append({
-                        "role": "assistant",
-                        "content": assistant_message.content,
-                        "tool_calls": [
-                            {
-                                "id": tc.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tc.function.name,
-                                    "arguments": tc.function.arguments
+                    conversation_history.append(
+                        {
+                            "role": "assistant",
+                            "content": assistant_message.content,
+                            "tool_calls": [
+                                {
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments,
+                                    },
                                 }
-                            }
-                            for tc in assistant_message.tool_calls
-                        ]
-                    })
+                                for tc in assistant_message.tool_calls
+                            ],
+                        }
+                    )
 
                     # Execute each tool call via MCP
                     for tool_call in assistant_message.tool_calls:
@@ -304,42 +328,64 @@ Return ONLY the rephrased query, nothing else."""
                             function_args = {}
 
                         # Store original query for potential retry
-                        original_search_query = function_args.get("query") if function_name == "search_book" else None
+                        original_search_query = (
+                            function_args.get("query")
+                            if function_name == "search_book"
+                            else None
+                        )
                         book_title_for_retry = None
 
                         # Translate book title to slug if needed
                         if "book_identifier" in function_args:
                             book_id = function_args["book_identifier"]
                             print(f"[TOOL] LLM provided book_identifier: '{book_id}'")
-                            print(f"[TOOL] Available mappings: {self.title_to_slug if hasattr(self, 'title_to_slug') else 'NONE'}")
+                            print(
+                                f"[TOOL] Available mappings: {self.title_to_slug if hasattr(self, 'title_to_slug') else 'NONE'}"
+                            )
 
                             # Try to match as title first (case-insensitive)
-                            if hasattr(self, 'title_to_slug') and book_id.lower() in self.title_to_slug:
+                            if (
+                                hasattr(self, "title_to_slug")
+                                and book_id.lower() in self.title_to_slug
+                            ):
                                 original_id = book_id
-                                function_args["book_identifier"] = self.title_to_slug[book_id.lower()]
-                                book_title_for_retry = original_id  # Store title for retry context
-                                print(f"[TOOL] ✓ Translated '{original_id}' → '{function_args['book_identifier']}'")
+                                function_args["book_identifier"] = self.title_to_slug[
+                                    book_id.lower()
+                                ]
+                                book_title_for_retry = (
+                                    original_id  # Store title for retry context
+                                )
+                                print(
+                                    f"[TOOL] ✓ Translated '{original_id}' → '{function_args['book_identifier']}'"
+                                )
                             else:
-                                print(f"[TOOL] ✗ NO TRANSLATION - passing '{book_id}' as-is")
+                                print(
+                                    f"[TOOL] ✗ NO TRANSLATION - passing '{book_id}' as-is"
+                                )
 
                         print(f"[TOOL] Calling: {function_name}({function_args})")
 
                         # Call MCP server (already has error handling)
-                        tool_result = await self.call_mcp_tool(function_name, function_args)
+                        tool_result = await self.call_mcp_tool(
+                            function_name, function_args
+                        )
 
                         # Check if search returned 0 results and attempt retry
                         if function_name == "search_book" and original_search_query:
-                            results_count = self._extract_search_results_count(tool_result)
+                            results_count = self._extract_search_results_count(
+                                tool_result
+                            )
                             timer.set_num_results(results_count)
 
                             if results_count == 0:
-                                print(f"[SEARCH] No results found for: '{original_search_query}'")
+                                print(
+                                    f"[SEARCH] No results found for: '{original_search_query}'"
+                                )
                                 print(f"[RETRY] Attempting query rephrase...")
 
                                 # Rephrase the query
                                 rephrased_query = await self._rephrase_query(
-                                    original_search_query,
-                                    book_title_for_retry
+                                    original_search_query, book_title_for_retry
                                 )
 
                                 # Retry with rephrased query
@@ -347,25 +393,33 @@ Return ONLY the rephrased query, nothing else."""
                                 retry_args["query"] = rephrased_query
 
                                 print(f"[RETRY] Searching with rephrased query...")
-                                retry_result = await self.call_mcp_tool(function_name, retry_args)
+                                retry_result = await self.call_mcp_tool(
+                                    function_name, retry_args
+                                )
 
-                                retry_count = self._extract_search_results_count(retry_result)
+                                retry_count = self._extract_search_results_count(
+                                    retry_result
+                                )
 
                                 # Track retry in metrics
                                 timer.set_retry_info(
                                     original_query=original_search_query,
                                     rephrased_query=rephrased_query,
-                                    retry_results=retry_count
+                                    retry_results=retry_count,
                                 )
 
                                 if retry_count > 0:
                                     # Use retry result since it found something
                                     tool_result = retry_result
-                                    print(f"[RETRY] Found {retry_count} results with rephrased query")
+                                    print(
+                                        f"[RETRY] Found {retry_count} results with rephrased query"
+                                    )
                                 else:
                                     # Both failed - mark as fallback to context
                                     timer.set_fallback_to_context(True)
-                                    print(f"[RETRY] No results from retry. LLM will respond from available context.")
+                                    print(
+                                        f"[RETRY] No results from retry. LLM will respond from available context."
+                                    )
                                     # Keep original tool result showing 0 results
                                     # LLM will see this and respond from context
                             elif results_count > 0:
@@ -377,24 +431,29 @@ Return ONLY the rephrased query, nothing else."""
                         print()
 
                         # Add tool result to conversation
-                        conversation_history.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": tool_result
-                        })
+                        conversation_history.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": tool_result,
+                            }
+                        )
 
                     # Get final response from OpenAI after tool execution
                     final_response = self.client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=conversation_history
+                        model="gpt-4o-mini", messages=conversation_history
                     )
 
                     final_message = final_response.choices[0].message.content
-                    conversation_history.append({"role": "assistant", "content": final_message})
+                    conversation_history.append(
+                        {"role": "assistant", "content": final_message}
+                    )
 
                     # Store response and assess quality
                     timer.set_response(final_message)
-                    score, reasoning = self.judge.assess_response(user_message, final_message)
+                    score, reasoning = self.judge.assess_response(
+                        user_message, final_message
+                    )
                     timer.set_llm_assessment(score, reasoning)
 
                     return final_message, conversation_history, timer.query_id
@@ -402,11 +461,15 @@ Return ONLY the rephrased query, nothing else."""
                 else:
                     # No tool calls, just return the response
                     response_text = assistant_message.content
-                    conversation_history.append({"role": "assistant", "content": response_text})
+                    conversation_history.append(
+                        {"role": "assistant", "content": response_text}
+                    )
 
                     # Store response and assess quality
                     timer.set_response(response_text)
-                    score, reasoning = self.judge.assess_response(user_message, response_text)
+                    score, reasoning = self.judge.assess_response(
+                        user_message, response_text
+                    )
                     timer.set_llm_assessment(score, reasoning)
 
                     return response_text, conversation_history, timer.query_id
@@ -415,13 +478,17 @@ Return ONLY the rephrased query, nothing else."""
                 error_msg = f"Error during chat: {str(e)}"
                 print(f"[ERROR] {error_msg}")
                 timer.set_response(error_msg)
-                return error_msg, conversation_history if conversation_history else [], timer.query_id
+                return (
+                    error_msg,
+                    conversation_history if conversation_history else [],
+                    timer.query_id,
+                )
 
     async def close(self):
         """Close the MCP session."""
         if self.session:
             await self.session.__aexit__(None, None, None)
-        if hasattr(self, 'stdio_context'):
+        if hasattr(self, "stdio_context"):
             await self.stdio_context.__aexit__(None, None, None)
 
 
@@ -449,7 +516,7 @@ async def main():
 
         response, history = await agent.chat(
             "Search for passages about 'death' in the same book.",
-            conversation_history=history
+            conversation_history=history,
         )
         print(f"Agent: {response}\n")
 

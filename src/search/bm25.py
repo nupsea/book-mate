@@ -1,10 +1,15 @@
 import math
 import re
 import pickle
+import logging
 from pathlib import Path
 from collections import Counter
 
-STOPWORDS = {"the","a","an","and","of","in","to"}
+logger = logging.getLogger(__name__)
+
+STOPWORDS = {"the", "a", "an", "and", "of", "in", "to"}
+
+
 def simple_tokenize(text):
     return [w for w in re.findall(r"\w+", text.lower()) if w not in STOPWORDS]
 
@@ -66,11 +71,13 @@ class BM25Retriever:
         query_tokens = simple_tokenize(query)
         scores = [self.score(query_tokens, i) for i in range(self.N)]
         ranked = sorted(enumerate(scores), key=lambda x: -x[1])[:topk]
-        return [{"id": self.ids[i], "text": self.raw_docs[i], "score": s} for i, s in ranked]
+        return [
+            {"id": self.ids[i], "text": self.raw_docs[i], "score": s} for i, s in ranked
+        ]
 
     def id_search(self, query: str, topk=7):
         search_results = self.search(query, topk)
-        return [c['id'] for c in search_results]
+        return [c["id"] for c in search_results]
 
     def save_index(self, filepath: str = "bm25_index.pkl"):
         """Save BM25 index to disk."""
@@ -84,12 +91,12 @@ class BM25Retriever:
             "ids": self.ids,
             "raw_docs": self.raw_docs,
             "k1": self.k1,
-            "b": self.b
+            "b": self.b,
         }
         Path(filepath).parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, "wb") as f:
             pickle.dump(index_data, f)
-        print(f"BM25 index saved to {filepath}")
+        logger.info(f"BM25 index saved to {filepath}")
 
     def load_index(self, filepath: str = "bm25_index.pkl"):
         """Load BM25 index from disk."""
@@ -109,7 +116,7 @@ class BM25Retriever:
         self.raw_docs = index_data["raw_docs"]
         self.k1 = index_data.get("k1", 1.5)
         self.b = index_data.get("b", 0.75)
-        print(f"BM25 index loaded from {filepath} ({self.N} documents)")
+        logger.info(f"BM25 index loaded from {filepath} ({self.N} documents)")
 
     def cleanup(self):
         self.docs = []
@@ -120,5 +127,4 @@ class BM25Retriever:
         self.avgdl = 0
         self.N = 0
         self.raw_docs = []
-        print("BM25 index cleared.")
-
+        logger.info("BM25 index cleared.")

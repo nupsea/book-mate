@@ -1,12 +1,15 @@
 """
 Generate ground truth evaluation data for a book using LLM as judge.
 """
+
 import json
 from src.content.ground_truth import GoldenDataGenerator
 from src.content.reader import GutenbergReader
 
 
-def sample_chunks_for_gt(book_slug: str, sample_size: int = 50, skip_preface: bool = True):
+def sample_chunks_for_gt(
+    book_slug: str, sample_size: int = 50, skip_preface: bool = True
+):
     """
     Sample representative chunks from a book for ground truth generation.
 
@@ -24,26 +27,26 @@ def sample_chunks_for_gt(book_slug: str, sample_size: int = 50, skip_preface: bo
             "path": "DATA/the_odyssey.txt",
             "pattern": r"^(?:BOOK [IVXLCDM]+)\s*\n",
             "title": "The Odyssey",
-            "skip_first": 11  # Skip preface chunks (first 11 chunks are preface)
+            "skip_first": 11,  # Skip preface chunks (first 11 chunks are preface)
         },
         "mma": {
             "path": "DATA/meditations_marcus_aurelius.txt",
             "pattern": r"^(?:THE .* BOOK)\s*\n",
             "title": "Meditations",
-            "skip_first": 5
+            "skip_first": 5,
         },
         "sha": {
             "path": "DATA/sherlock_holmes.txt",
             "pattern": r"^[IVXLCDM]+\.\s+.*\n",
             "title": "The Adventures of Sherlock Holmes",
-            "skip_first": 5
+            "skip_first": 5,
         },
         "aiw": {
             "path": "DATA/alice_in_wonderland.txt",
             "pattern": r"^(?:CHAPTER [IVXLCDM]+\.)\s*\n",
             "title": "Alice in Wonderland",
-            "skip_first": 3
-        }
+            "skip_first": 3,
+        },
     }
 
     if book_slug not in book_configs:
@@ -53,9 +56,7 @@ def sample_chunks_for_gt(book_slug: str, sample_size: int = 50, skip_preface: bo
     print(f"\nLoading: {config['title']}")
 
     reader = GutenbergReader(
-        config["path"],
-        slug=book_slug,
-        split_pattern=config["pattern"]
+        config["path"], slug=book_slug, split_pattern=config["pattern"]
     )
 
     chunks = reader.parse(max_tokens=500, overlap=100)
@@ -78,7 +79,9 @@ def sample_chunks_for_gt(book_slug: str, sample_size: int = 50, skip_preface: bo
     return chunks
 
 
-def generate_ground_truth(book_slug: str, sample_size: int = 50, output_path: str = None):
+def generate_ground_truth(
+    book_slug: str, sample_size: int = 50, output_path: str = None
+):
     """
     Generate ground truth queries for a book.
 
@@ -119,7 +122,7 @@ if __name__ == "__main__":
 
     # Configuration
     book_slug = "ody"  # The Odyssey
-    sample_size = 50    # Number of chunks to generate GT for
+    sample_size = 50  # Number of chunks to generate GT for
 
     if len(sys.argv) > 1:
         book_slug = sys.argv[1]

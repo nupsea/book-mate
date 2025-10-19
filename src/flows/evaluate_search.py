@@ -2,6 +2,7 @@
 Evaluate search performance using ground truth data.
 Compares baseline vs adaptive retriever.
 """
+
 from src.content.ground_truth import GoldenDataGenerator
 from src.content.reader import GutenbergReader
 from src.search.hybrid import FusionRetriever
@@ -15,23 +16,23 @@ def load_chunks_for_book(book_slug: str):
         "ody": {
             "path": "DATA/the_odyssey.txt",
             "pattern": r"^(?:BOOK [IVXLCDM]+)\s*\n",
-            "title": "The Odyssey"
+            "title": "The Odyssey",
         },
         "mma": {
             "path": "DATA/meditations_marcus_aurelius.txt",
             "pattern": r"^(?:THE .* BOOK)\s*\n",
-            "title": "Meditations"
+            "title": "Meditations",
         },
         "sha": {
             "path": "DATA/sherlock_holmes.txt",
             "pattern": r"^[IVXLCDM]+\.\s+.*\n",
-            "title": "The Adventures of Sherlock Holmes"
+            "title": "The Adventures of Sherlock Holmes",
         },
         "aiw": {
             "path": "DATA/alice_in_wonderland.txt",
             "pattern": r"^(?:CHAPTER [IVXLCDM]+\.)\s*\n",
-            "title": "Alice in Wonderland"
-        }
+            "title": "Alice in Wonderland",
+        },
     }
 
     if book_slug not in book_configs:
@@ -41,9 +42,7 @@ def load_chunks_for_book(book_slug: str):
     print(f"Loading: {config['title']}")
 
     reader = GutenbergReader(
-        config["path"],
-        slug=book_slug,
-        split_pattern=config["pattern"]
+        config["path"], slug=book_slug, split_pattern=config["pattern"]
     )
 
     chunks = reader.parse(max_tokens=500, overlap=100)
@@ -76,6 +75,7 @@ def evaluate_search(book_slug: str, ground_truth_path: str = None):
 
     # Clear Qdrant collection for fresh start
     from qdrant_client import QdrantClient
+
     qdrant = QdrantClient("localhost", port=6333)
     if qdrant.collection_exists("book_chunks"):
         print("Clearing Qdrant collection...\n")
@@ -85,22 +85,26 @@ def evaluate_search(book_slug: str, ground_truth_path: str = None):
     configs = [
         {
             "name": "Baseline (α=0.7, no preprocessing)",
-            "retriever": FusionRetriever(alpha=0.7, bm25_index_path=f"indexes/{book_slug}_baseline.pkl")
+            "retriever": FusionRetriever(
+                alpha=0.7, bm25_index_path=f"indexes/{book_slug}_baseline.pkl"
+            ),
         },
         {
             "name": "Adaptive (α=0.7 + preprocessing)",
-            "retriever": AdaptiveRetriever(alpha=0.7, bm25_index_path=f"indexes/{book_slug}_adaptive.pkl")
-        }
+            "retriever": AdaptiveRetriever(
+                alpha=0.7, bm25_index_path=f"indexes/{book_slug}_adaptive.pkl"
+            ),
+        },
     ]
 
     results = {}
 
     for config in configs:
         print(f"Testing: {config['name']}")
-        retriever = config['retriever']
+        retriever = config["retriever"]
         evaluator = SearchEvaluator(chunks, retriever)
         metrics = evaluator.evaluate(golden_data)
-        results[config['name']] = metrics
+        results[config["name"]] = metrics
 
         print(f"  Hit@5: {metrics['hit_rate_at_5']:.3f}")
         print(f"  MRR@5: {metrics['mrr_at_5']:.3f}")
@@ -112,23 +116,29 @@ def evaluate_search(book_slug: str, ground_truth_path: str = None):
             qdrant.delete_collection("book_chunks")
 
     # Comparison table
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"RESULTS - {book_slug.upper()}")
-    print("="*80)
+    print("=" * 80)
     print(f"{'Configuration':<45} {'Hit@5':<10} {'MRR@5':<10} {'Δ Hit@5':<10}")
     print("-" * 80)
 
     baseline_hit5 = results["Baseline (α=0.7, no preprocessing)"]["hit_rate_at_5"]
 
     for name, metrics in results.items():
-        delta = metrics['hit_rate_at_5'] - baseline_hit5
+        delta = metrics["hit_rate_at_5"] - baseline_hit5
         delta_str = f"+{delta:.3f}" if delta > 0 else f"{delta:.3f}"
-        print(f"{name:<45} {metrics['hit_rate_at_5']:<10.3f} "
-              f"{metrics['mrr_at_5']:<10.3f} {delta_str:<10}")
+        print(
+            f"{name:<45} {metrics['hit_rate_at_5']:<10.3f} "
+            f"{metrics['mrr_at_5']:<10.3f} {delta_str:<10}"
+        )
 
-    print("="*80)
+    print("=" * 80)
 
-    improvement = (results["Adaptive (α=0.7 + preprocessing)"]["hit_rate_at_5"] - baseline_hit5) / baseline_hit5 * 100
+    improvement = (
+        (results["Adaptive (α=0.7 + preprocessing)"]["hit_rate_at_5"] - baseline_hit5)
+        / baseline_hit5
+        * 100
+    )
     print(f"\nImprovement: {improvement:+.1f}%")
 
     return results

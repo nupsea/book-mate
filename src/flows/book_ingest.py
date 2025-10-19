@@ -1,6 +1,7 @@
 """
 Book ingestion pipeline - plain Python script.
 """
+
 import asyncio
 from pathlib import Path
 
@@ -23,19 +24,26 @@ def validate_inputs(slug: str, file_path: str, title: str, force_update: bool = 
     exists = store.book_exists(slug)
 
     if exists and not force_update:
-        raise ValueError(f"Book with slug '{slug}' already exists. Use force_update=True to overwrite.")
+        raise ValueError(
+            f"Book with slug '{slug}' already exists. Use force_update=True to overwrite."
+        )
 
     return {
         "slug": slug,
         "file_path": file_path,
         "title": title,
         "exists": exists,
-        "file_size": path.stat().st_size
+        "file_size": path.stat().st_size,
     }
 
 
-def read_and_parse(slug: str, file_path: str, split_pattern: str = None,
-                   max_tokens: int = 500, overlap: int = 100):
+def read_and_parse(
+    slug: str,
+    file_path: str,
+    split_pattern: str = None,
+    max_tokens: int = 500,
+    overlap: int = 100,
+):
     """Read file and parse into chunks."""
     reader = GutenbergReader(file_path, slug, split_pattern=split_pattern)
     chunks = reader.parse(max_tokens=max_tokens, overlap=overlap)
@@ -44,7 +52,7 @@ def read_and_parse(slug: str, file_path: str, split_pattern: str = None,
         "chunks": chunks,
         "num_chunks": len(chunks),
         "num_chars": sum(len(c.get("text", "")) for c in chunks),
-        "num_tokens": sum(c.get("num_tokens", 0) for c in chunks)
+        "num_tokens": sum(c.get("num_tokens", 0) for c in chunks),
     }
 
 
@@ -56,14 +64,20 @@ async def generate_summaries(chunks: list):
     return {
         "chapter_summaries": chapter_summaries,
         "book_summary": book_summary,
-        "num_chapters": len(chapter_summaries)
+        "num_chapters": len(chapter_summaries),
     }
 
 
-def store_to_db(slug: str, title: str, author: str,
-                num_chunks: int, num_chars: int,
-                chapter_summaries: list, book_summary: str,
-                force_update: bool = False):
+def store_to_db(
+    slug: str,
+    title: str,
+    author: str,
+    num_chunks: int,
+    num_chars: int,
+    chapter_summaries: list,
+    book_summary: str,
+    force_update: bool = False,
+):
     """Store book metadata and summaries to database."""
     store = PgresStore()
 
@@ -107,7 +121,7 @@ def build_search_indexes(chunks: list):
     return {
         "bm25_indexed": len(all_chunks),
         "vector_indexed": len(chunks),
-        "new_chunks": len(chunks)
+        "new_chunks": len(chunks),
     }
 
 
@@ -119,13 +133,17 @@ def verify_ingestion(slug: str, expected_chapters: int):
         raise ValueError(f"Book verification failed: {slug} not found in database")
 
     if not store.summaries_exist(slug):
-        raise ValueError(f"Summaries verification failed: no summaries found for {slug}")
+        raise ValueError(
+            f"Summaries verification failed: no summaries found for {slug}"
+        )
 
     chapters = store.get_all_chapter_summaries(slug)
     actual_chapters = len(chapters)
 
     if actual_chapters != expected_chapters:
-        raise ValueError(f"Chapter count mismatch: expected {expected_chapters}, got {actual_chapters}")
+        raise ValueError(
+            f"Chapter count mismatch: expected {expected_chapters}, got {actual_chapters}"
+        )
 
     book_summary = store.get_book_summary(slug)
 
@@ -133,7 +151,7 @@ def verify_ingestion(slug: str, expected_chapters: int):
         "status": "success",
         "slug": slug,
         "chapters_verified": actual_chapters,
-        "book_summary_length": len(book_summary) if book_summary else 0
+        "book_summary_length": len(book_summary) if book_summary else 0,
     }
 
 
@@ -145,7 +163,7 @@ async def ingest_book(
     split_pattern: str = None,
     max_tokens: int = 500,
     overlap: int = 100,
-    force_update: bool = False
+    force_update: bool = False,
 ):
     """
     Ingest a book: validate -> parse -> summarize -> store -> build indexes -> verify.
@@ -156,45 +174,55 @@ async def ingest_book(
     print(f"Validation passed - File size: {validation['file_size']} bytes")
 
     parse_result = read_and_parse(slug, file_path, split_pattern, max_tokens, overlap)
-    print(f"Parsed {parse_result['num_chunks']} chunks, {parse_result['num_chars']} chars")
+    print(
+        f"Parsed {parse_result['num_chunks']} chunks, {parse_result['num_chars']} chars"
+    )
 
-    summary_result = await generate_summaries(parse_result['chunks'])
-    print(f"Generated {summary_result['num_chapters']} chapter summaries + book summary")
+    summary_result = await generate_summaries(parse_result["chunks"])
+    print(
+        f"Generated {summary_result['num_chapters']} chapter summaries + book summary"
+    )
 
     db_result = store_to_db(
-        slug, title, author,
-        parse_result['num_chunks'],
-        parse_result['num_chars'],
-        summary_result['chapter_summaries'],
-        summary_result['book_summary'],
-        force_update
+        slug,
+        title,
+        author,
+        parse_result["num_chunks"],
+        parse_result["num_chars"],
+        summary_result["chapter_summaries"],
+        summary_result["book_summary"],
+        force_update,
     )
     print(f"Stored to database - Book ID: {db_result['book_id']}")
 
-    search_result = build_search_indexes(parse_result['chunks'])
-    print(f"Built search indexes - BM25: {search_result['bm25_indexed']}, Vector: {search_result['vector_indexed']} chunks")
+    search_result = build_search_indexes(parse_result["chunks"])
+    print(
+        f"Built search indexes - BM25: {search_result['bm25_indexed']}, Vector: {search_result['vector_indexed']} chunks"
+    )
 
-    verify_result = verify_ingestion(slug, summary_result['num_chapters'])
+    verify_result = verify_ingestion(slug, summary_result["num_chapters"])
     print(f"Verification complete - Status: {verify_result['status']}")
 
     return {
         "slug": slug,
-        "book_id": db_result['book_id'],
+        "book_id": db_result["book_id"],
         "title": title,
-        "chapters": verify_result['chapters_verified'],
-        "chunks": parse_result['num_chunks'],
-        "search_indexed": search_result['bm25_indexed'],
-        "status": "success"
+        "chapters": verify_result["chapters_verified"],
+        "chunks": parse_result["num_chunks"],
+        "search_indexed": search_result["bm25_indexed"],
+        "status": "success",
     }
 
 
 if __name__ == "__main__":
-    result = asyncio.run(ingest_book(
-        slug="ody",
-        file_path="DATA/the_odyssey.txt",
-        title="The Odyssey",
-        author="Homer",
-        split_pattern=r"^(?:BOOK [IVXLCDM]+)\s*\n",
-        force_update=False
-    ))
+    result = asyncio.run(
+        ingest_book(
+            slug="ody",
+            file_path="DATA/the_odyssey.txt",
+            title="The Odyssey",
+            author="Homer",
+            split_pattern=r"^(?:BOOK [IVXLCDM]+)\s*\n",
+            force_update=False,
+        )
+    )
     print(f"\nIngestion complete: {result}")

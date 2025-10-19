@@ -2,6 +2,7 @@
 Gradio UI adapter for monitoring dashboard.
 Uses the UI-agnostic MonitoringDashboard class.
 """
+
 import gradio as gr
 from src.monitoring.dashboard import MonitoringDashboard
 
@@ -30,10 +31,10 @@ def format_llm_assessment() -> str:
 
 """
 
-    if llm_data['judged_queries'] > 0:
-        for score in ['EXCELLENT', 'ADEQUATE', 'POOR']:
-            count = llm_data['scores'][score]
-            pct = llm_data['percentages'][score]
+    if llm_data["judged_queries"] > 0:
+        for score in ["EXCELLENT", "ADEQUATE", "POOR"]:
+            count = llm_data["scores"][score]
+            pct = llm_data["percentages"][score]
             if count > 0:
                 markdown += f"- **{score}**: {count} ({pct}%)\n"
     else:
@@ -46,7 +47,7 @@ def format_user_feedback() -> str:
     """Format user feedback data as markdown."""
     user_data = MonitoringDashboard.get_user_feedback_data()
 
-    if user_data['rated_queries'] == 0:
+    if user_data["rated_queries"] == 0:
         return """## User Feedback
 
 _No user ratings yet_
@@ -62,7 +63,7 @@ _No user ratings yet_
 """
 
     for i in range(5, 0, -1):
-        count = user_data['rating_distribution'][i]
+        count = user_data["rating_distribution"][i]
         stars = "★" * i
         markdown += f"- {stars} ({i}): {count}\n"
 
@@ -91,7 +92,7 @@ def format_retry_stats() -> str:
     """Format retry statistics as markdown."""
     retry_stats = MonitoringDashboard.get_retry_stats()
 
-    if retry_stats['total_retries'] == 0:
+    if retry_stats["total_retries"] == 0:
         return """## Query Retry Statistics
 
 _No query retries yet_
@@ -167,8 +168,7 @@ def create_monitoring_interface():
 
             with gr.Tab("Query History"):
                 queries_table = gr.Dataframe(
-                    value=MonitoringDashboard.get_recent_queries_df(limit=50),
-                    wrap=True
+                    value=MonitoringDashboard.get_recent_queries_df(limit=50), wrap=True
                 )
 
             with gr.Tab("Performance"):
@@ -185,7 +185,7 @@ def create_monitoring_interface():
                 format_retry_stats(),
                 MonitoringDashboard.get_recent_queries_df(limit=50),
                 format_latency_distribution(),
-                format_recent_errors()
+                format_recent_errors(),
             )
 
         # Manual refresh
@@ -200,8 +200,8 @@ def create_monitoring_interface():
                 retry_display,
                 queries_table,
                 latency_display,
-                errors_display
-            ]
+                errors_display,
+            ],
         )
 
         # Auto-refresh with timer
@@ -221,7 +221,7 @@ def create_monitoring_interface():
                     gr.update(),
                     gr.update(),
                     gr.update(),
-                    gr.update()
+                    gr.update(),
                 )
 
         timer.tick(
@@ -235,8 +235,8 @@ def create_monitoring_interface():
                 retry_display,
                 queries_table,
                 latency_display,
-                errors_display
-            ]
+                errors_display,
+            ],
         )
 
     return refresh_btn

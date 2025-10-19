@@ -1,6 +1,7 @@
 """
 LLM-based response quality assessment.
 """
+
 import json
 from openai import OpenAI
 from typing import Optional
@@ -35,7 +36,9 @@ Score definitions:
     def __init__(self, openai_client: OpenAI):
         self.client = openai_client
 
-    def assess_response(self, query: str, response: str) -> tuple[LLMRelevanceScore, Optional[str]]:
+    def assess_response(
+        self, query: str, response: str
+    ) -> tuple[LLMRelevanceScore, Optional[str]]:
         """
         Assess response quality using LLM.
 
@@ -46,14 +49,19 @@ Score definitions:
             assessment_result = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are an objective evaluator of AI responses."},
-                    {"role": "user", "content": self.ASSESSMENT_PROMPT.format(
-                        query=query,
-                        response=response
-                    )}
+                    {
+                        "role": "system",
+                        "content": "You are an objective evaluator of AI responses.",
+                    },
+                    {
+                        "role": "user",
+                        "content": self.ASSESSMENT_PROMPT.format(
+                            query=query, response=response
+                        ),
+                    },
                 ],
                 temperature=0.3,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
 
             result_text = assessment_result.choices[0].message.content
@@ -66,7 +74,7 @@ Score definitions:
             score_map = {
                 "EXCELLENT": LLMRelevanceScore.EXCELLENT,
                 "ADEQUATE": LLMRelevanceScore.ADEQUATE,
-                "POOR": LLMRelevanceScore.POOR
+                "POOR": LLMRelevanceScore.POOR,
             }
 
             score = score_map.get(score_str, LLMRelevanceScore.NOT_JUDGED)

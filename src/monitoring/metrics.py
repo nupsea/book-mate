@@ -1,6 +1,7 @@
 """
 Metrics collector for monitoring Book Mate performance.
 """
+
 import time
 from datetime import datetime
 from typing import Optional
@@ -13,6 +14,7 @@ import os
 
 class LLMRelevanceScore(Enum):
     """LLM self-assessment score categories."""
+
     EXCELLENT = "EXCELLENT"
     ADEQUATE = "ADEQUATE"
     POOR = "POOR"
@@ -22,6 +24,7 @@ class LLMRelevanceScore(Enum):
 @dataclass
 class QueryMetric:
     """Single query metric."""
+
     timestamp: datetime
     query: str
     response: str
@@ -65,7 +68,7 @@ class MetricsCollector:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, 'initialized'):
+        if not hasattr(self, "initialized"):
             self.initialized = True
             self.queries: list[QueryMetric] = []
             self.tool_usage: dict[str, int] = defaultdict(int)
@@ -82,6 +85,7 @@ class MetricsCollector:
             if self.use_db:
                 try:
                     from src.monitoring.persistence import MetricsPersistence
+
                     self.db = MetricsPersistence()
                     print("[METRICS] Database persistence enabled")
 
@@ -104,7 +108,9 @@ class MetricsCollector:
                 print(f"[METRICS] Loaded {len(loaded_metrics)} metrics from database")
 
                 # Populate in-memory structures
-                for metric in reversed(loaded_metrics):  # Reverse to maintain chronological order
+                for metric in reversed(
+                    loaded_metrics
+                ):  # Reverse to maintain chronological order
                     self.queries.append(metric)
 
                     # Update aggregates
@@ -138,7 +144,7 @@ class MetricsCollector:
 
             # Keep only recent queries in memory
             if len(self.queries) > self._max_history:
-                self.queries = self.queries[-self._max_history:]
+                self.queries = self.queries[-self._max_history :]
 
             # Update aggregates
             if metric.success:
@@ -166,7 +172,9 @@ class MetricsCollector:
                 except Exception as e:
                     print(f"[METRICS] Failed to save to DB: {e}")
 
-    def update_user_feedback(self, query_id: str, rating: int, comment: Optional[str] = None):
+    def update_user_feedback(
+        self, query_id: str, rating: int, comment: Optional[str] = None
+    ):
         """Update user feedback for a specific query."""
         with self._lock:
             # Update in-memory
@@ -210,15 +218,16 @@ class MetricsCollector:
                     "avg_latency_ms": 0.0,
                     "tool_usage": {},
                     "recent_errors": [],
-                    "llm_assessment": {
-                        "judged_queries": 0,
-                        "distribution": {}
-                    },
-                    "user_feedback": {}
+                    "llm_assessment": {"judged_queries": 0, "distribution": {}},
+                    "user_feedback": {},
                 }
 
             # Calculate success rate
-            success_rate = (self.success_count / (self.success_count + self.error_count)) * 100 if (self.success_count + self.error_count) > 0 else 0.0
+            success_rate = (
+                (self.success_count / (self.success_count + self.error_count)) * 100
+                if (self.success_count + self.error_count) > 0
+                else 0.0
+            )
 
             # Calculate average latency
             avg_latency = self.total_latency_ms / total_queries
@@ -228,13 +237,18 @@ class MetricsCollector:
                 {
                     "timestamp": q.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                     "query": q.query[:100],
-                    "error": q.error_message
+                    "error": q.error_message,
                 }
-                for q in self.queries[-50:] if not q.success
+                for q in self.queries[-50:]
+                if not q.success
             ][-10:]
 
             # LLM Assessment Distribution
-            judged_queries = sum(1 for q in self.queries if q.llm_relevance_score != LLMRelevanceScore.NOT_JUDGED)
+            judged_queries = sum(
+                1
+                for q in self.queries
+                if q.llm_relevance_score != LLMRelevanceScore.NOT_JUDGED
+            )
             llm_assessment = {}
 
             if judged_queries > 0:
@@ -244,7 +258,7 @@ class MetricsCollector:
                         percentage = (count / judged_queries) * 100
                         llm_assessment[score_type.value] = {
                             "count": count,
-                            "percentage": round(percentage, 1)
+                            "percentage": round(percentage, 1),
                         }
 
             # User Feedback Distribution
@@ -252,7 +266,9 @@ class MetricsCollector:
             user_feedback = {}
 
             if rated_queries > 0:
-                total_stars = sum(rating * count for rating, count in self.user_rating_counts.items())
+                total_stars = sum(
+                    rating * count for rating, count in self.user_rating_counts.items()
+                )
                 avg_rating = total_stars / rated_queries
 
                 user_feedback = {
@@ -261,7 +277,7 @@ class MetricsCollector:
                     "rating_distribution": {
                         f"{stars}_stars": self.user_rating_counts.get(stars, 0)
                         for stars in range(1, 6)
-                    }
+                    },
                 }
 
             return {
@@ -274,9 +290,9 @@ class MetricsCollector:
                 "recent_errors": recent_errors,
                 "llm_assessment": {
                     "judged_queries": judged_queries,
-                    "distribution": llm_assessment
+                    "distribution": llm_assessment,
                 },
-                "user_feedback": user_feedback
+                "user_feedback": user_feedback,
             }
 
     def get_recent_queries(self, limit: int = 20) -> list[dict]:
@@ -292,7 +308,7 @@ class MetricsCollector:
                     "success": "✓" if q.success else "✗",
                     "tools": ", ".join(q.tool_calls) if q.tool_calls else "None",
                     "llm_score": self._format_llm_score(q.llm_relevance_score),
-                    "user_rating": self._format_user_rating(q.user_rating)
+                    "user_rating": self._format_user_rating(q.user_rating),
                 }
                 for q in reversed(self.queries[-limit:])
             ]
@@ -303,7 +319,7 @@ class MetricsCollector:
             LLMRelevanceScore.EXCELLENT: "🟢 Excellent",
             LLMRelevanceScore.ADEQUATE: "🟡 Adequate",
             LLMRelevanceScore.POOR: "🔴 Poor",
-            LLMRelevanceScore.NOT_JUDGED: "⚪ N/A"
+            LLMRelevanceScore.NOT_JUDGED: "⚪ N/A",
         }
         return emoji_map.get(score, "⚪ N/A")
 
@@ -321,7 +337,7 @@ class MetricsCollector:
                 "500ms - 1s": 0,
                 "1s - 2s": 0,
                 "2s - 5s": 0,
-                "> 5s": 0
+                "> 5s": 0,
             }
 
             for q in self.queries:
@@ -405,7 +421,7 @@ class QueryTimer:
             original_query=self.original_query,
             rephrased_query=self.rephrased_query,
             retry_results=self.retry_results,
-            fallback_to_context=self.fallback_to_context
+            fallback_to_context=self.fallback_to_context,
         )
 
         metrics_collector.record_query(metric)
@@ -423,12 +439,16 @@ class QueryTimer:
         """Set the response text."""
         self.response = response
 
-    def set_llm_assessment(self, score: LLMRelevanceScore, reasoning: Optional[str] = None):
+    def set_llm_assessment(
+        self, score: LLMRelevanceScore, reasoning: Optional[str] = None
+    ):
         """Set LLM self-assessment score."""
         self.llm_relevance_score = score
         self.llm_reasoning = reasoning
 
-    def set_retry_info(self, original_query: str, rephrased_query: str, retry_results: int):
+    def set_retry_info(
+        self, original_query: str, rephrased_query: str, retry_results: int
+    ):
         """Record retry attempt information."""
         self.retry_attempted = True
         self.original_query = original_query

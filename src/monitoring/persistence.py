@@ -1,6 +1,7 @@
 """
 Database persistence layer for metrics.
 """
+
 import psycopg2
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -17,7 +18,8 @@ class MetricsPersistence:
     def save_query_metric(self, metric: QueryMetric):
         """Save a single query metric to database."""
         with self.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO query_metrics (
                     query_id, timestamp, query, response, book_slug,
                     latency_ms, success, error_message, tool_calls, num_results,
@@ -28,37 +30,48 @@ class MetricsPersistence:
                 ON CONFLICT (query_id) DO UPDATE SET
                     user_rating = EXCLUDED.user_rating,
                     user_comment = EXCLUDED.user_comment
-            """, (
-                metric.query_id,
-                metric.timestamp,
-                metric.query,
-                metric.response,
-                metric.book_slug,
-                metric.latency_ms,
-                metric.success,
-                metric.error_message,
-                metric.tool_calls,
-                metric.num_results,
-                metric.llm_relevance_score.value if metric.llm_relevance_score else None,
-                metric.llm_reasoning,
-                metric.user_rating,
-                metric.user_comment,
-                metric.retry_attempted,
-                metric.original_query,
-                metric.rephrased_query,
-                metric.retry_results,
-                metric.fallback_to_context
-            ))
+            """,
+                (
+                    metric.query_id,
+                    metric.timestamp,
+                    metric.query,
+                    metric.response,
+                    metric.book_slug,
+                    metric.latency_ms,
+                    metric.success,
+                    metric.error_message,
+                    metric.tool_calls,
+                    metric.num_results,
+                    (
+                        metric.llm_relevance_score.value
+                        if metric.llm_relevance_score
+                        else None
+                    ),
+                    metric.llm_reasoning,
+                    metric.user_rating,
+                    metric.user_comment,
+                    metric.retry_attempted,
+                    metric.original_query,
+                    metric.rephrased_query,
+                    metric.retry_results,
+                    metric.fallback_to_context,
+                ),
+            )
         self.conn.commit()
 
-    def update_user_feedback(self, query_id: str, rating: int, comment: Optional[str] = None) -> bool:
+    def update_user_feedback(
+        self, query_id: str, rating: int, comment: Optional[str] = None
+    ) -> bool:
         """Update user feedback for a specific query."""
         with self.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 UPDATE query_metrics
                 SET user_rating = %s, user_comment = %s
                 WHERE query_id = %s
-            """, (rating, comment, query_id))
+            """,
+                (rating, comment, query_id),
+            )
             updated = cur.rowcount > 0
         self.conn.commit()
         return updated
@@ -66,7 +79,8 @@ class MetricsPersistence:
     def get_recent_metrics(self, limit: int = 100) -> List[QueryMetric]:
         """Load recent metrics from database."""
         with self.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT query_id, timestamp, query, response, book_slug,
                        latency_ms, success, error_message, tool_calls, num_results,
                        llm_relevance_score, llm_reasoning, user_rating, user_comment,
@@ -74,7 +88,9 @@ class MetricsPersistence:
                 FROM query_metrics
                 ORDER BY timestamp DESC
                 LIMIT %s
-            """, (limit,))
+            """,
+                (limit,),
+            )
             rows = cur.fetchall()
 
         metrics = []
@@ -105,7 +121,7 @@ class MetricsPersistence:
                 original_query=row[15],
                 rephrased_query=row[16],
                 retry_results=row[17],
-                fallback_to_context=row[18] or False
+                fallback_to_context=row[18] or False,
             )
             metrics.append(metric)
 
@@ -115,7 +131,8 @@ class MetricsPersistence:
         """Get aggregated statistics from database."""
         with self.conn.cursor() as cur:
             # Overall stats
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT
                     COUNT(*) as total_queries,
                     SUM(CASE WHEN success THEN 1 ELSE 0 END) as success_count,
@@ -124,7 +141,8 @@ class MetricsPersistence:
                     COUNT(CASE WHEN user_rating IS NOT NULL THEN 1 END) as rated_queries,
                     AVG(user_rating) as avg_rating
                 FROM query_metrics
-            """)
+            """
+            )
             row = cur.fetchone()
 
         if not row or row[0] == 0:
@@ -135,7 +153,7 @@ class MetricsPersistence:
                 "success_rate": 0.0,
                 "avg_latency_ms": 0.0,
                 "rated_queries": 0,
-                "avg_rating": 0.0
+                "avg_rating": 0.0,
             }
 
         total, success, errors, avg_lat, rated, avg_rat = row
@@ -148,7 +166,7 @@ class MetricsPersistence:
             "success_rate": round(success_rate, 2),
             "avg_latency_ms": round(avg_lat, 2) if avg_lat else 0.0,
             "rated_queries": rated or 0,
-            "avg_rating": round(avg_rat, 2) if avg_rat else 0.0
+            "avg_rating": round(avg_rat, 2) if avg_rat else 0.0,
         }
 
     def close(self):

@@ -1,8 +1,12 @@
 """
 Adaptive hybrid search with dynamic alpha and query preprocessing.
 """
+
 import re
+import logging
 from src.search.hybrid import FusionRetriever
+
+logger = logging.getLogger(__name__)
 
 
 class AdaptiveRetriever(FusionRetriever):
@@ -15,15 +19,44 @@ class AdaptiveRetriever(FusionRetriever):
 
     # Common stop words to remove
     STOP_WORDS = {
-        'what', 'when', 'where', 'who', 'why', 'how', 'does', 'do', 'did',
-        'is', 'are', 'was', 'were', 'the', 'a', 'an', 'about', 'in', 'on',
-        'at', 'to', 'for', 'of', 'with', 'by', 'from', 'this', 'that',
-        'these', 'those', 'and', 'or', 'but'
+        "what",
+        "when",
+        "where",
+        "who",
+        "why",
+        "how",
+        "does",
+        "do",
+        "did",
+        "is",
+        "are",
+        "was",
+        "were",
+        "the",
+        "a",
+        "an",
+        "about",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "this",
+        "that",
+        "these",
+        "those",
+        "and",
+        "or",
+        "but",
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.base_alpha = kwargs.get('alpha', 0.7)
+        self.base_alpha = kwargs.get("alpha", 0.7)
 
     def preprocess_query(self, query: str) -> str:
         """
@@ -39,7 +72,7 @@ class AdaptiveRetriever(FusionRetriever):
         query_lower = query.lower()
 
         # Remove punctuation except hyphens
-        query_clean = re.sub(r'[^\w\s-]', ' ', query_lower)
+        query_clean = re.sub(r"[^\w\s-]", " ", query_lower)
 
         # Split and filter stop words
         words = query_clean.split()
@@ -49,7 +82,7 @@ class AdaptiveRetriever(FusionRetriever):
         if not filtered_words:
             return query
 
-        return ' '.join(filtered_words)
+        return " ".join(filtered_words)
 
     def get_dynamic_alpha(self, query: str) -> float:
         """
@@ -65,7 +98,7 @@ class AdaptiveRetriever(FusionRetriever):
             Dynamic alpha value (0.0 to 1.0)
         """
         # Question queries benefit from semantic search
-        if '?' in query:
+        if "?" in query:
             return 0.5  # Balanced approach for questions
 
         # Very short keyword queries benefit from BM25
@@ -80,8 +113,14 @@ class AdaptiveRetriever(FusionRetriever):
         # Long descriptive queries benefit from semantic
         return 0.6  # Slightly more semantic weight
 
-    def search(self, query: str, topk: int = 7, use_preprocessing: bool = True,
-               use_dynamic_alpha: bool = False, candidate_multiplier: int = 3):
+    def search(
+        self,
+        query: str,
+        topk: int = 7,
+        use_preprocessing: bool = True,
+        use_dynamic_alpha: bool = False,
+        candidate_multiplier: int = 3,
+    ):
         """
         Adaptive search with query preprocessing.
 
@@ -115,7 +154,7 @@ class AdaptiveRetriever(FusionRetriever):
             try:
                 self.load_bm25_index()
             except FileNotFoundError:
-                print("Warning: BM25 index not found, using vector-only search")
+                logger.warning("BM25 index not found, using vector-only search")
                 embed_results = self.vec.search(query, topk)
                 return [c["id"] for c in embed_results]
 
@@ -151,7 +190,7 @@ if __name__ == "__main__":
         "What does Telemachus feel about the suitors?",
         "Odysseus Cyclops",
         "Why did Ulysses reveal his true name to the Cyclops?",
-        "golden sandals"
+        "golden sandals",
     ]
 
     print("=== Query Preprocessing Test ===\n")
