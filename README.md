@@ -298,6 +298,9 @@ Finally, adopted the adaptive retriever approach with weighted BM25 and vector s
 See [EVALUATION.md](EVALUATION.md) for details on generating ground truth and evaluating search performance.
 
 
+## Screen Records
+
+- ![Overview](gradio-screen-recording-2025-10-20T13-50-37.webm)
 
 ## References & Acknowledgements
 **LLM Zoomcamp:** Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible
