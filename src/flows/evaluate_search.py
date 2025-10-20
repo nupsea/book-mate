@@ -86,13 +86,13 @@ def evaluate_search(book_slug: str, ground_truth_path: str = None):
         {
             "name": "Baseline (α=0.7, no preprocessing)",
             "retriever": FusionRetriever(
-                alpha=0.7, bm25_index_path=f"indexes/{book_slug}_baseline.pkl"
+                alpha=0.7, bm25_index_path=f"INDEXES/{book_slug}_baseline.pkl"
             ),
         },
         {
             "name": "Adaptive (α=0.7 + preprocessing)",
             "retriever": AdaptiveRetriever(
-                alpha=0.7, bm25_index_path=f"indexes/{book_slug}_adaptive.pkl"
+                alpha=0.7, bm25_index_path=f"INDEXES/{book_slug}_adaptive.pkl"
             ),
         },
     ]

@@ -28,7 +28,7 @@ class BookMateAgent:
         env = dict(os.environ)
 
         server_params = StdioServerParameters(
-            command="python", args=["-m", "src.mcp_server.book_tools"], env=env
+            command="python", args=["-m", "src.mcp_server"], env=env
         )
 
         # Use async context manager correctly
@@ -356,11 +356,11 @@ Return ONLY the rephrased query, nothing else."""
                                     original_id  # Store title for retry context
                                 )
                                 print(
-                                    f"[TOOL] ✓ Translated '{original_id}' → '{function_args['book_identifier']}'"
+                                    f"[TOOL] Translated '{original_id}' -> '{function_args['book_identifier']}'"
                                 )
                             else:
                                 print(
-                                    f"[TOOL] ✗ NO TRANSLATION - passing '{book_id}' as-is"
+                                    f"[TOOL] NO TRANSLATION - passing '{book_id}' as-is"
                                 )
 
                         print(f"[TOOL] Calling: {function_name}({function_args})")

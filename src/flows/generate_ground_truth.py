@@ -110,9 +110,9 @@ def generate_ground_truth(
 
     # Calculate statistics
     total_queries = sum(len(queries) for queries in generator.results.values())
-    print(f"\n✓ Generated {total_queries} queries for {len(generator.results)} chunks")
-    print(f"✓ Average {total_queries / len(generator.results):.1f} queries per chunk")
-    print(f"✓ Saved to: {output_path}")
+    print(f"\nGenerated {total_queries} queries for {len(generator.results)} chunks")
+    print(f"Average {total_queries / len(generator.results):.1f} queries per chunk")
+    print(f"Saved to: {output_path}")
 
     return generator.results
 
@@ -132,4 +132,4 @@ if __name__ == "__main__":
 
     # Generate ground truth
     generate_ground_truth(book_slug, sample_size)
-    print("\n✓ Complete!")
+    print("\nComplete!")

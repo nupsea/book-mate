@@ -1,22 +1,35 @@
+import logging
+import sys
+import os
+
+# CRITICAL: Configure logging BEFORE any other imports to prevent stdout pollution
+# MCP protocol requires stdout to be reserved exclusively for JSON-RPC messages
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
+    force=True,
+)
+
+# Suppress third-party library logging that might output to stdout
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.WARNING)
+logging.getLogger("torch").setLevel(logging.WARNING)
+
+# Disable transformers progress bars and verbosity
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+# Now safe to import other modules
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp.server.stdio
-import logging
-import sys
 
 from src.flows.book_query import (
     search_book_content,
     get_book_summary,
     get_chapter_summaries,
     # validate_book_exists
-)
-
-# Configure logging to use stderr (CRITICAL for MCP - stdout is reserved for JSON-RPC)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stderr,
-    force=True,
 )
 
 logger = logging.getLogger(__name__)

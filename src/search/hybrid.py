@@ -13,7 +13,7 @@ class FusionRetriever:
         self,
         transformer="BAAI/bge-small-en",
         alpha=0.7,
-        bm25_index_path="indexes/bm25_index.pkl",
+        bm25_index_path="INDEXES/bm25_index.pkl",
     ) -> None:
         self.bm25 = BM25Retriever()
         self.vec = SemanticRetriever(transformer=transformer)

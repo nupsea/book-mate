@@ -305,7 +305,7 @@ class MetricsCollector:
                     "query": q.query[:80],
                     "book": q.book_slug or "N/A",
                     "latency_ms": round(q.latency_ms, 2),
-                    "success": "✓" if q.success else "✗",
+                    "success": "OK" if q.success else "FAIL",
                     "tools": ", ".join(q.tool_calls) if q.tool_calls else "None",
                     "llm_score": self._format_llm_score(q.llm_relevance_score),
                     "user_rating": self._format_user_rating(q.user_rating),

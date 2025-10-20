@@ -1,5 +1,15 @@
 import os
 import logging
+import sys
+
+# Ensure logging goes to stderr only (critical for MCP compatibility)
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        stream=sys.stderr,
+    )
+
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 

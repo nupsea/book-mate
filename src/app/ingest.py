@@ -29,7 +29,7 @@ async def load(
             f"force_update=True: Deleting existing book '{slug}' and all related data..."
         )
         store.delete_book(slug)
-        print(f"✓ Book '{slug}' deleted.")
+        print(f"Book '{slug}' deleted.")
 
     # Check if book already exists (and we're not forcing update)
     if not force_update and store.summaries_exist(slug):
@@ -52,7 +52,7 @@ async def load(
     # Store summaries
     store.store_summaries(slug, chapter_summaries, book_summary)
 
-    print(f"✓ Book '{title}' (slug: {slug}, id: {book_id}) loaded into data store.")
+    print(f"Book '{title}' (slug: {slug}, id: {book_id}) loaded into data store.")
 
 
 books_map = {
