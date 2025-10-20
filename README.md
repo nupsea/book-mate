@@ -4,13 +4,13 @@ A book assistant (powered by LLMs) that lets you upload books, chat with their c
 
 ## Features
 
-- Book Ingestion: Upload and index books with automatic chapter detection
-- AI Chat Interface: Ask questions about book content with context-aware responses
-- Hybrid Search: Combines BM25 keyword search with semantic vector search
-- Automatic Query Retry: When search returns no results, automatically rephrases and retries queries
-- Citations: All responses include source citations with chapter numbers and chunk IDs
-- Monitoring Dashboard: Track query performance, LLM quality assessments, user feedback, and retry statistics
-- MCP Integration: Uses Model Context Protocol for tool-based agent interactions
+- **Book Ingestion**: Upload and index books with automatic chapter detection
+- **AI Chat Interface**: Ask questions about book content with context-aware responses
+- **Hybrid Search**: Combines BM25 keyword search with semantic vector search
+- **Automatic Query Retry**: When search returns no results, automatically rephrases and retries queries
+- **Citations**: All responses include source citations with chapter numbers and chunk IDs
+- **Monitoring Dashboard**: Track query performance, LLM quality assessments, user feedback, and retry statistics
+- **MCP Integration**: Uses Model Context Protocol for tool-based agent interactions
 
 ## Quick Start
 
@@ -20,15 +20,24 @@ A book assistant (powered by LLMs) that lets you upload books, chat with their c
 
 ### Installation
 
-```bash
+Clone the repository
+
+```zsh
 git clone https://github.com/nupsea/book-mate.git
+```
+
+Set up environment
+
+```zsh
 cd book-mate
-
-# Set up environment
 cp .env_template .env
-# Update .env with your OPENAI_API_KEY
+```
+> Update .env with your OPENAI_API_KEY
 
-# Build and start all services (PostgreSQL, Qdrant, UI)
+
+Build and start all services (PostgreSQL, Qdrant, UI)
+
+```zsh
 make build
 make start
 ```
