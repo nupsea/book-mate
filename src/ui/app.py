@@ -9,6 +9,10 @@ from src.mcp_client.agent import BookMateAgent
 from src.ui.chat import create_chat_interface
 from src.ui.ingest import create_ingest_interface
 from src.ui.monitoring import create_monitoring_interface
+from src.monitoring.tracer import init_phoenix_tracing
+
+# Initialize Phoenix tracing once at module load
+init_phoenix_tracing()
 
 
 class BookMateUI:

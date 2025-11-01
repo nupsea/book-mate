@@ -26,6 +26,17 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    environment:
+      PHOENIX_WORKING_DIR: /phoenix-data
+    volumes:
+      - phoenix_data:/phoenix-data
+
   app:
     build: .
     container_name: bookmate_app
@@ -39,6 +50,7 @@ services:
       PG_DB: booksdb
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:4317
     ports:
       - "7860:7860"
     volumes:
@@ -50,8 +62,11 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+      phoenix:
+        condition: service_started
 
 volumes:
   qdrant_data: {}
+  phoenix_data: {}
   pgdata:
     driver: local

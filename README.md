@@ -35,7 +35,7 @@ cp .env_template .env
 > Update .env with your OPENAI_API_KEY
 
 
-Build and start all services (PostgreSQL, Qdrant, UI)
+Build and start all services (PostgreSQL, Qdrant, Phoenix, UI)
 
 ```zsh
 make build
@@ -43,6 +43,7 @@ make start
 ```
 
 The UI will be available at http://localhost:7860
+Phoenix tracing UI will be available at http://localhost:6006
 
 **Useful commands:**
 ```bash
@@ -89,6 +90,14 @@ Go to the "Monitoring" tab to view:
 - Query retry statistics (automatic rephrasing attempts and success rates)
 
 ![Monitoring Dashboard](image-4.png)
+
+### 4. View LLM Traces (Phoenix)
+
+Go to http://localhost:6006 to access Phoenix for LLM observability:
+- View all OpenAI API calls with full prompts and responses
+- Trace conversation flows and tool usage
+- Analyze token usage and latency
+- Debug and optimize LLM interactions
 
 ## Project Structure
 
@@ -142,6 +151,7 @@ book-mate/
 - **BM25**: Keyword-based search index
 - **MCP Server**: Exposes book tools (search, summaries) to the agent
 - **OpenAI**: Powers the conversational AI and embeddings
+- **Phoenix**: LLM observability and tracing (http://localhost:6006)
 
 ## Database Debug
 
@@ -301,6 +311,13 @@ See [EVALUATION.md](EVALUATION.md) for details on generating ground truth and ev
 ## Screen Records
 
 - ![Overview](gradio-screen-recording-2025-10-20T13-50-37.webm)
+
+## Future Work
+- Refactor Agent and MCP Server for better modularity
+- Host it on cloud (AWS/GCP/Azure)
+- Support more book formats (PDF, EPUB)
+- Improve user interface and experience
+- Workflow recording 
 
 ## References & Acknowledgements
 **LLM Zoomcamp:** Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible

@@ -148,6 +148,11 @@ def create_monitoring_interface():
         gr.Markdown("# Monitoring Dashboard")
         gr.Markdown("Real-time metrics for Book Mate performance and quality")
 
+        gr.Markdown(
+            "**LLM Tracing:** View detailed OpenAI traces, prompts, and token usage at "
+            "[Phoenix Dashboard](http://localhost:6006) (opens in new tab)"
+        )
+
         with gr.Row():
             refresh_btn = gr.Button("Refresh Metrics", variant="primary")
             auto_refresh = gr.Checkbox(label="Auto-refresh (every 10s)", value=False)

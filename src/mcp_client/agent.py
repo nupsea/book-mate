@@ -9,6 +9,15 @@ from mcp.client.stdio import stdio_client
 from openai import OpenAI
 from src.monitoring.metrics import QueryTimer, metrics_collector
 from src.monitoring.judge import ResponseJudge
+from src.monitoring.tracer import init_phoenix_tracing
+from src.mcp_client.prompts import (
+    get_system_prompt,
+    get_citation_reminder,
+    get_rephrase_prompt,
+)
+
+# Initialize Phoenix tracing once at module load
+init_phoenix_tracing()
 
 
 class BookMateAgent:
@@ -131,19 +140,6 @@ class BookMateAgent:
         Returns:
             Rephrased query string
         """
-        context = f" in the book '{book_title}'" if book_title else ""
-
-        rephrase_prompt = f"""The following search query{context} returned no results:
-"{original_query}"
-
-Please rephrase this query to be more effective for semantic search. Consider:
-1. Using synonyms or related terms
-2. Broadening the search scope slightly
-3. Simplifying complex queries
-4. Using different phrasings
-
-Return ONLY the rephrased query, nothing else."""
-
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -152,7 +148,10 @@ Return ONLY the rephrased query, nothing else."""
                         "role": "system",
                         "content": "You are a search query optimization assistant.",
                     },
-                    {"role": "user", "content": rephrase_prompt},
+                    {
+                        "role": "user",
+                        "content": get_rephrase_prompt(original_query, book_title),
+                    },
                 ],
                 temperature=0.3,
             )
@@ -164,7 +163,7 @@ Return ONLY the rephrased query, nothing else."""
 
         except Exception as e:
             print(f"[RETRY] Error rephrasing query: {e}")
-            return original_query  # Fall back to original
+            return original_query
 
     def _extract_search_results_count(self, tool_result: str) -> int:
         """
@@ -218,51 +217,28 @@ Return ONLY the rephrased query, nothing else."""
                 if not user_message or not user_message.strip():
                     raise ValueError("User message cannot be empty.")
 
-                # Check if this is a new conversation (None or empty list)
+                # Get available books for system prompt
+                available_books, self.title_to_slug = self._get_available_books()
+
+                # Create system prompt
+                system_prompt = {
+                    "role": "system",
+                    "content": get_system_prompt(available_books),
+                }
+
+                # Check if this is a new conversation or needs system prompt
                 if not conversation_history:
-                    # Dynamically get available books
-                    available_books, self.title_to_slug = self._get_available_books()
-
                     print(f"[CHAT] Creating NEW conversation")
-                    print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
-                    print(f"[CHAT] Available books shown to LLM:\n{available_books}\n")
-
-                    conversation_history = [
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a helpful book assistant with access to book summaries and search tools. "
-                                "When searching books, analyze and synthesize the passages to provide meaningful insights. "
-                                "Don't just list results - explain what they reveal, identify themes, and connect ideas.\n\n"
-                                f"CRITICAL RULES:\n"
-                                f"1. ALWAYS use the provided tools to get information - NEVER make up or hallucinate book content\n"
-                                f"2. If asked about a book's plot/summary, you MUST call get_book_summary tool\n"
-                                f"3. If asked to search for specific content, you MUST call search_book tool\n"
-                                f"4. For tool parameters, use the exact book title as the book_identifier\n"
-                                f"5. CITATIONS: When using search results, ALWAYS include citations in your response.\n"
-                                f"   - Reference passages naturally in your text\n"
-                                f"   - Use the format: [Chapter X, Source: chunk_id]\n"
-                                f"   - Example: 'Marcus emphasizes acceptance of death [Chapter 4, Source: mam_04_003_abc123]'\n"
-                                f"   - Include citations for every specific claim from search results\n"
-                                f"6. If search returns 0 results:\n"
-                                f"   - The system will automatically try a rephrased query for you\n"
-                                f"   - If that also returns 0 results, use available context (book summaries, chapter summaries)\n"
-                                f"   - You may provide general insights based on the book's themes if you have context\n"
-                                f"   - Always acknowledge that specific passages weren't found\n"
-                                f"7. If no data exists in tools, clearly state you don't have that information - DO NOT fabricate\n\n"
-                                f"{available_books}\n\n"
-                                f"Remember: Always call tools first, and cite your sources when using search results."
-                            ),
-                        }
-                    ]
+                    conversation_history = [system_prompt]
                 else:
-                    print(
-                        f"[CHAT] CONTINUING conversation with {len(conversation_history)} messages"
-                    )
-                    # For continuing conversations, use existing mapping
-                    if not hasattr(self, "title_to_slug"):
-                        _, self.title_to_slug = self._get_available_books()
-                    print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
+                    # Ensure system prompt exists in continuing conversations
+                    if not conversation_history or conversation_history[0].get("role") != "system":
+                        print(f"[CHAT] CONTINUING conversation - prepending system prompt")
+                        conversation_history = [system_prompt] + conversation_history
+                    else:
+                        print(f"[CHAT] CONTINUING conversation with existing system prompt")
+
+                print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
 
                 # Add user message
                 conversation_history.append({"role": "user", "content": user_message})
@@ -430,12 +406,16 @@ Return ONLY the rephrased query, nothing else."""
 
                         print()
 
-                        # Add tool result to conversation
+                        # Add tool result to conversation with citation reminder
+                        tool_content = tool_result
+                        if function_name == "search_book" and results_count > 0:
+                            tool_content += get_citation_reminder()
+
                         conversation_history.append(
                             {
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
-                                "content": tool_result,
+                                "content": tool_content,
                             }
                         )
 

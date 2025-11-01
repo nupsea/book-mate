@@ -5,10 +5,12 @@ description = "A personal book assistant using LLMs"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "arize-phoenix>=5.5.0",
     "gradio>=5.49.1",
     "matplotlib>=3.10.6",
     "mcp>=1.16.0",
     "openai>=1.108.2",
+    "openinference-instrumentation-openai>=0.1.18",
     "pandas>=2.3.2",
     "psycopg2-binary>=2.9.10",
     "qdrant-client>=1.15.1",
