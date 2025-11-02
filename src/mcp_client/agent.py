@@ -28,6 +28,7 @@ class BookMateAgent:
         self.read_stream = None
         self.write_stream = None
         self.judge = ResponseJudge(self.client)
+        self.failed_searches = set()  # Track failed search queries to prevent duplicates
 
     async def connect_to_mcp_server(self):
         """Connect to the MCP server."""
@@ -230,6 +231,8 @@ class BookMateAgent:
                 if not conversation_history:
                     print(f"[CHAT] Creating NEW conversation")
                     conversation_history = [system_prompt]
+                    # Clear failed searches for new conversation
+                    self.failed_searches.clear()
                 else:
                     # Ensure system prompt exists in continuing conversations
                     if not conversation_history or conversation_history[0].get("role") != "system":
@@ -339,6 +342,30 @@ class BookMateAgent:
                                     f"[TOOL] NO TRANSLATION - passing '{book_id}' as-is"
                                 )
 
+                        # Check for duplicate failed searches
+                        if function_name == "search_book":
+                            search_key = (
+                                function_args.get("query", "").lower(),
+                                function_args.get("book_identifier", ""),
+                            )
+                            if search_key in self.failed_searches:
+                                print(
+                                    f"[SEARCH] Skipping duplicate failed search: {function_args.get('query')}"
+                                )
+                                tool_result = (
+                                    f"This search query already failed previously. "
+                                    f"Please use available context (book summaries, chapter summaries) instead."
+                                )
+                                # Don't execute the tool call
+                                conversation_history.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tool_call.id,
+                                        "content": tool_result,
+                                    }
+                                )
+                                continue
+
                         print(f"[TOOL] Calling: {function_name}({function_args})")
 
                         # Call MCP server (already has error handling)
@@ -395,6 +422,22 @@ class BookMateAgent:
                                     timer.set_fallback_to_context(True)
                                     print(
                                         f"[RETRY] No results from retry. LLM will respond from available context."
+                                    )
+                                    # Mark both queries as failed to prevent duplicate attempts
+                                    self.failed_searches.add(
+                                        (
+                                            original_search_query.lower(),
+                                            function_args.get("book_identifier", ""),
+                                        )
+                                    )
+                                    self.failed_searches.add(
+                                        (
+                                            rephrased_query.lower(),
+                                            function_args.get("book_identifier", ""),
+                                        )
+                                    )
+                                    print(
+                                        f"[RETRY] Marked queries as failed to prevent duplicates"
                                     )
                                     # Keep original tool result showing 0 results
                                     # LLM will see this and respond from context

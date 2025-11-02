@@ -15,21 +15,27 @@ query_id_map = {}
 async def respond(message, chat_history, selected_book, ui):
     """Handle chat interactions."""
     if not message.strip():
-        return chat_history, "", gr.update(visible=False)
+        yield chat_history, message, gr.update(visible=False)
+        return
 
-    chat_history.append([message, None])
+    # Add user message with loading indicator for bot
+    chat_history.append([message, "Thinking..."])
 
+    # Keep message in textbox during processing
+    yield chat_history, message, gr.update(visible=False)
+
+    # Get bot response
     bot_response, query_id = await ui.chat(message, chat_history[:-1], selected_book)
 
+    # Update with actual response
     chat_history[-1][1] = bot_response
 
     # Store query_id for this interaction
     if query_id:
-        # Use the index of the last message as key
         query_id_map[len(chat_history) - 1] = query_id
 
-    # Show feedback buttons after response
-    return chat_history, "", gr.update(visible=True, value=None)
+    # Clear textbox and show feedback buttons
+    yield chat_history, "", gr.update(visible=True, value=None)
 
 
 def submit_feedback(rating, chat_history):
@@ -125,10 +131,10 @@ def create_chat_interface(ui):
 
         # Event handlers - wrap to pass ui
         async def handle_submit(msg_text, history, book_sel):
-            result_history, result_msg, feedback_update = await respond(
+            async for result_history, result_msg, feedback_update in respond(
                 msg_text, history, book_sel, ui
-            )
-            return result_history, result_msg, feedback_update
+            ):
+                yield result_history, result_msg, feedback_update
 
         def handle_rating(rating, history):
             status = submit_feedback(rating, history)

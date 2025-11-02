@@ -131,17 +131,31 @@ book-mate/
        │
 ┌──────▼────────────┐         ┌──────────────┐
 │  BookMateAgent    │◄───────►│  OpenAI API  │
-│  (MCP Client)     │         └──────────────┘
-└──────┬────────────┘
+│  (MCP Client)     │         └──────┬───────┘
+└──────┬────────────┘                │
+       │                             │ OTLP traces
+       │                        ┌────▼──────┐
+       │                        │  Phoenix  │
+       │                        └───────────┘
        │
 ┌──────▼────────────┐
 │   MCP Server      │
 │  (Book Tools)     │
 └──────┬────────────┘
        │
-       ├──────────► PostgreSQL (Metadata, Summaries)
-       ├──────────► BM25 Index (Keyword Search)
-       └──────────► Qdrant (Vector Search)
+       ├──────────►  ╭─────────────────────╮
+       │             │    PostgreSQL       │
+       │             ├─────────────────────┤
+       │             │ Metadata, Summaries │
+       │             ╰─────────────────────╯
+       │
+       ├──────────►  [BM25 Index] (Keyword Search)
+       │
+       └──────────►  ╭─────────────────────╮
+                     │      Qdrant         │
+                     ├─────────────────────┤
+                     │   Vector Search     │
+                     ╰─────────────────────╯
 ```
 
 ### Key Components
@@ -151,7 +165,7 @@ book-mate/
 - **BM25**: Keyword-based search index
 - **MCP Server**: Exposes book tools (search, summaries) to the agent
 - **OpenAI**: Powers the conversational AI and embeddings
-- **Phoenix**: LLM observability and tracing (http://localhost:6006)
+- **Phoenix**: LLM observability via OpenTelemetry traces
 
 ## Database Debug
 
