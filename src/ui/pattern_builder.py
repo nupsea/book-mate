@@ -24,20 +24,31 @@ def build_pattern_from_example(example: str) -> tuple[str, str]:
     if not example:
         return "", "No example provided"
 
-    # Normalize trailing wildcards after periods:
-    # "II. *" or "II.*" → "II." (bare numeral)
-    # "PART I.*" → "PART I." (word + numeral)
-    # But keep "PART I. *" or "THE * BOOK" (wildcard with space before it, intentional)
+    # Handle wildcards after bare numerals:
+    # "I.*" or "I. *" → User wants to match with OR without titles (e.g., "I. TITLE" or just "I.")
+    # "I." → User wants ONLY bare numerals (e.g., just "I.", not "I. TITLE")
+    # This distinction is crucial for books like:
+    #   - Sherlock Holmes: Use "I.*" to match "I. A SCANDAL IN BOHEMIA"
+    #   - War of the Worlds: Use "I." to match only bare "I." (title on next line)
 
-    # Pattern: ends with period + optional space + asterisk (no space before asterisk means user typo)
-    if re.search(r"\.\*\s*$", example):
-        # Remove the .* at the end
-        example = re.sub(r"\.\*\s*$", ".", example)
-    elif re.search(r"^[IVXLCDM]+\.\s+\*\s*$", example) or re.search(
-        r"^\d+\.\s+\*\s*$", example
+    # Check if it's a bare numeral with trailing wildcard
+    bare_numeral_with_wildcard = (
+        re.search(r"^[IVXLCDM]+\.\s*\*\s*$", example) or
+        re.search(r"^\d+\.\s*\*\s*$", example)
+    )
+
+    if bare_numeral_with_wildcard:
+        # User wants optional text after numeral - strip wildcard, set flag
+        example = re.sub(r"\.\s*\*\s*$", ".", example)
+        make_text_optional = True
+    else:
+        make_text_optional = False
+
+    # For word+numeral patterns, normalize .* (e.g., "CHAPTER I.*" → "CHAPTER I.")
+    if re.search(r"\w+\s+[IVXLCDM]+\.\*\s*$", example) or re.search(
+        r"\w+\s+\d+\.\*\s*$", example
     ):
-        # Bare numeral with space before * (like "II. *") → normalize to "II."
-        example = re.sub(r"\.\s+\*\s*$", ".", example)
+        example = re.sub(r"\.\*\s*$", ".", example)
 
     # Check for wildcard pattern (*)
     if "*" in example:
@@ -128,8 +139,15 @@ def build_pattern_from_example(example: str) -> tuple[str, str]:
         r"^\s*\d+\.\s*$", example
     ):
         # Case 2: Just a bare numeral with period (like "II." or "2.")
-        pattern = f"^{pattern}\\s+.+$"
-        desc += " (matches lines starting with this pattern)"
+        # Check if user specified wildcard (meaning they want optional text)
+        if make_text_optional:
+            # User entered "I.*" - match with or without title
+            pattern = f"^{pattern}(?:\\s+.+)?$"
+            desc += " (matches with or without title on same line)"
+        else:
+            # User entered "I." - match ONLY bare numerals
+            pattern = f"^{pattern}$"
+            desc += " (matches bare numerals only)"
     elif re.search(r"\w+\s+[IVXLCDM]+\.\s*$", example) or re.search(
         r"\w+\s+\d+\.\s*$", example
     ):

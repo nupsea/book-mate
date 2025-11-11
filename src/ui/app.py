@@ -125,9 +125,8 @@ def create_app():
 
     ui = BookMateUI()
 
-    with gr.Blocks(title="Book Mate", theme=gr.themes.Ocean()) as app:
+    with gr.Blocks(title="Book Mate", theme=gr.themes.Base()) as app:
         gr.Markdown("# Book Mate - AI Book Assistant")
-        gr.Markdown("Powered by MCP + OpenAI + Hybrid Search (BM25 + Semantic)")
 
         with gr.Tabs() as tabs:
             # Tab 1: Chat Interface

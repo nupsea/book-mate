@@ -111,15 +111,16 @@ def create_chat_interface(ui):
 
                 gr.Markdown(
                     """
-                **Tips:**
-                - Select a book from dropdown or mention the title directly
-                - Example: "What does Marcus say about virtue?"
-                - Available books listed on the right
-                - Rate responses to help improve the system!
-                """
+                    ### Tips
+                    - **Book Selection**: Use dropdown or mention book title in your query
+                    - **Search Examples**: "Find passages about virtue", "What does the author say about courage?"
+                    - **Chapter Context**: Ask about specific chapters or broad themes
+                    - **Hybrid Search**: Uses both keyword matching (BM25) and semantic search
+                    - **Rate Responses**: Help improve quality by rating answers
+                    """
                 )
 
-            with gr.Column(scale=1):
+            with gr.Column(scale=1, min_width=300):
                 gr.Markdown("### Library")
 
                 book_list = gr.Dataframe(
@@ -127,6 +128,8 @@ def create_chat_interface(ui):
                     datatype=["str", "str", "str", "number", "str"],
                     interactive=False,
                     wrap=True,
+                    column_widths=["15%", "25%", "20%", "12%", "28%"],
+                    max_height=800,
                 )
 
         # Event handlers - wrap to pass ui

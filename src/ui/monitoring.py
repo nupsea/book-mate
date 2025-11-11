@@ -4,124 +4,129 @@ Uses the UI-agnostic MonitoringDashboard class.
 """
 
 import gradio as gr
+import pandas as pd
 from src.monitoring.dashboard import MonitoringDashboard
 
 
-def format_summary_stats() -> str:
-    """Format summary statistics as markdown."""
+def get_summary_stats_table() -> pd.DataFrame:
+    """Get summary statistics as a DataFrame for table display."""
     stats = MonitoringDashboard.get_summary_stats()
 
-    return f"""
-## Performance Metrics
+    data = {
+        "Metric": ["Total Queries", "Success Rate", "Avg Latency", "Errors"],
+        "Value": [
+            stats['total_queries'],
+            f"{stats['success_rate']}%",
+            f"{stats['avg_latency_ms']} ms",
+            stats['error_count']
+        ]
+    }
 
-**Total Queries:** {stats['total_queries']}
-**Success Rate:** {stats['success_rate']}%
-**Average Latency:** {stats['avg_latency_ms']} ms
-**Errors:** {stats['error_count']}
-"""
+    return pd.DataFrame(data)
 
 
-def format_llm_assessment() -> str:
-    """Format LLM assessment data as markdown."""
+def get_llm_assessment_table() -> pd.DataFrame:
+    """Get LLM assessment data as a DataFrame."""
     llm_data = MonitoringDashboard.get_llm_assessment_data()
 
-    markdown = f"""## LLM Self-Assessment
+    if llm_data["judged_queries"] == 0:
+        return pd.DataFrame({"Quality": [], "Count": [], "Percentage": []})
 
-**Queries Judged:** {llm_data['judged_queries']}
+    data = {
+        "Quality": [],
+        "Count": [],
+        "Percentage": []
+    }
 
-"""
+    for score in ["EXCELLENT", "ADEQUATE", "POOR"]:
+        count = llm_data["scores"][score]
+        if count > 0:
+            data["Quality"].append(score)
+            data["Count"].append(count)
+            data["Percentage"].append(f"{llm_data['percentages'][score]}%")
 
-    if llm_data["judged_queries"] > 0:
-        for score in ["EXCELLENT", "ADEQUATE", "POOR"]:
-            count = llm_data["scores"][score]
-            pct = llm_data["percentages"][score]
-            if count > 0:
-                markdown += f"- **{score}**: {count} ({pct}%)\n"
-    else:
-        markdown += "_No assessments yet_\n"
-
-    return markdown
+    return pd.DataFrame(data)
 
 
-def format_user_feedback() -> str:
-    """Format user feedback data as markdown."""
+def get_user_feedback_table() -> pd.DataFrame:
+    """Get user feedback data as a DataFrame."""
     user_data = MonitoringDashboard.get_user_feedback_data()
 
     if user_data["rated_queries"] == 0:
-        return """## User Feedback
+        return pd.DataFrame({"Rating": [], "Count": []})
 
-_No user ratings yet_
-"""
-
-    markdown = f"""## User Feedback
-
-**Rated Queries:** {user_data['rated_queries']}
-**Average Rating:** {user_data['avg_rating']}/5.0
-
-**Distribution:**
-
-"""
+    data = {
+        "Rating": [],
+        "Count": []
+    }
 
     for i in range(5, 0, -1):
         count = user_data["rating_distribution"][i]
         stars = "★" * i
-        markdown += f"- {stars} ({i}): {count}\n"
+        data["Rating"].append(f"{stars} ({i})")
+        data["Count"].append(count)
 
-    return markdown
+    return pd.DataFrame(data)
 
 
-def format_tool_usage() -> str:
-    """Format tool usage as markdown."""
+def get_tool_usage_table() -> pd.DataFrame:
+    """Get tool usage data as a DataFrame."""
     tool_usage = MonitoringDashboard.get_tool_usage()
 
     if not tool_usage:
-        return """## Tool Usage
+        return pd.DataFrame({"Tool": [], "Calls": []})
 
-_No tools used yet_
-"""
-
-    markdown = "## Tool Usage\n\n"
+    data = {
+        "Tool": [],
+        "Calls": []
+    }
 
     for tool, count in sorted(tool_usage.items(), key=lambda x: x[1], reverse=True):
-        markdown += f"- **{tool}**: {count} calls\n"
+        data["Tool"].append(tool)
+        data["Calls"].append(count)
 
-    return markdown
+    return pd.DataFrame(data)
 
 
-def format_retry_stats() -> str:
-    """Format retry statistics as markdown."""
+def get_retry_stats_table() -> pd.DataFrame:
+    """Get retry statistics as a DataFrame."""
     retry_stats = MonitoringDashboard.get_retry_stats()
 
     if retry_stats["total_retries"] == 0:
-        return """## Query Retry Statistics
+        return pd.DataFrame({"Metric": [], "Value": []})
 
-_No query retries yet_
-"""
+    data = {
+        "Metric": [
+            "Total Retries",
+            "Successful Retries",
+            "Failed Retries",
+            "Fallback to Context"
+        ],
+        "Value": [
+            retry_stats['total_retries'],
+            f"{retry_stats['successful_retries']} ({retry_stats['retry_success_rate']}%)",
+            retry_stats['failed_retries'],
+            retry_stats['fallback_to_context']
+        ]
+    }
 
-    markdown = f"""## Query Retry Statistics
-
-**Total Retries:** {retry_stats['total_retries']}
-**Successful Retries:** {retry_stats['successful_retries']} ({retry_stats['retry_success_rate']}%)
-**Failed Retries:** {retry_stats['failed_retries']}
-**Fallback to Context:** {retry_stats['fallback_to_context']}
-
-_When search returns 0 results, the system automatically rephrases and retries the query. If retry also returns 0 results, the LLM uses available context (summaries) to respond._
-"""
-
-    return markdown
+    return pd.DataFrame(data)
 
 
-def format_latency_distribution() -> str:
-    """Format latency distribution as markdown."""
+def get_latency_distribution_table() -> pd.DataFrame:
+    """Get latency distribution as a DataFrame."""
     latency = MonitoringDashboard.get_latency_distribution()
 
-    markdown = "## Latency Distribution\n\n"
+    data = {
+        "Latency Range": [],
+        "Count": []
+    }
 
     for bucket, count in latency.items():
-        bar = "█" * min(count, 50) if count > 0 else ""
-        markdown += f"- **{bucket}**: {count} {bar}\n"
+        data["Latency Range"].append(bucket)
+        data["Count"].append(count)
 
-    return markdown
+    return pd.DataFrame(data)
 
 
 def format_recent_errors() -> str:
@@ -146,11 +151,9 @@ def create_monitoring_interface():
 
     with gr.Column():
         gr.Markdown("# Monitoring Dashboard")
-        gr.Markdown("Real-time metrics for Book Mate performance and quality")
 
         gr.Markdown(
-            "**LLM Tracing:** View detailed OpenAI traces, prompts, and token usage at "
-            "[Phoenix Dashboard](http://localhost:6006) (opens in new tab)"
+            "**[LLM Tracing](http://localhost:6006)** - View detailed OpenAI traces, prompts, and token usage"
         )
 
         with gr.Row():
@@ -161,15 +164,56 @@ def create_monitoring_interface():
             with gr.Tab("Overview"):
                 with gr.Row():
                     with gr.Column():
-                        summary_display = gr.Markdown(value=format_summary_stats())
-                        llm_display = gr.Markdown(value=format_llm_assessment())
+                        gr.Markdown("### Performance Metrics")
+                        summary_table = gr.Dataframe(
+                            value=get_summary_stats_table(),
+                            headers=["Metric", "Value"],
+                            datatype=["str", "str"],
+                            interactive=False,
+                            wrap=True
+                        )
+
+                        gr.Markdown("### LLM Self-Assessment")
+                        llm_table = gr.Dataframe(
+                            value=get_llm_assessment_table(),
+                            headers=["Quality", "Count", "Percentage"],
+                            datatype=["str", "number", "str"],
+                            interactive=False,
+                            wrap=True
+                        )
 
                     with gr.Column():
-                        user_display = gr.Markdown(value=format_user_feedback())
-                        tool_display = gr.Markdown(value=format_tool_usage())
+                        gr.Markdown("### User Feedback")
+                        user_data = MonitoringDashboard.get_user_feedback_data()
+                        if user_data["rated_queries"] > 0:
+                            gr.Markdown(f"**Rated Queries:** {user_data['rated_queries']} | **Avg Rating:** {user_data['avg_rating']}/5.0")
+                        user_table = gr.Dataframe(
+                            value=get_user_feedback_table(),
+                            headers=["Rating", "Count"],
+                            datatype=["str", "number"],
+                            interactive=False,
+                            wrap=True
+                        )
+
+                        gr.Markdown("### Tool Usage")
+                        tool_table = gr.Dataframe(
+                            value=get_tool_usage_table(),
+                            headers=["Tool", "Calls"],
+                            datatype=["str", "number"],
+                            interactive=False,
+                            wrap=True
+                        )
 
                 with gr.Row():
-                    retry_display = gr.Markdown(value=format_retry_stats())
+                    with gr.Column():
+                        gr.Markdown("### Query Retry Statistics")
+                        retry_table = gr.Dataframe(
+                            value=get_retry_stats_table(),
+                            headers=["Metric", "Value"],
+                            datatype=["str", "str"],
+                            interactive=False,
+                            wrap=True
+                        )
 
             with gr.Tab("Query History"):
                 queries_table = gr.Dataframe(
@@ -177,19 +221,31 @@ def create_monitoring_interface():
                 )
 
             with gr.Tab("Performance"):
-                latency_display = gr.Markdown(value=format_latency_distribution())
-                errors_display = gr.Markdown(value=format_recent_errors())
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("### Latency Distribution")
+                        latency_table = gr.Dataframe(
+                            value=get_latency_distribution_table(),
+                            headers=["Latency Range", "Count"],
+                            datatype=["str", "number"],
+                            interactive=False,
+                            wrap=True
+                        )
+
+                    with gr.Column():
+                        gr.Markdown("### Recent Errors")
+                        errors_display = gr.Markdown(value=format_recent_errors())
 
         # Refresh handler
         def refresh_all():
             return (
-                format_summary_stats(),
-                format_llm_assessment(),
-                format_user_feedback(),
-                format_tool_usage(),
-                format_retry_stats(),
+                get_summary_stats_table(),
+                get_llm_assessment_table(),
+                get_user_feedback_table(),
+                get_tool_usage_table(),
+                get_retry_stats_table(),
                 MonitoringDashboard.get_recent_queries_df(limit=50),
-                format_latency_distribution(),
+                get_latency_distribution_table(),
                 format_recent_errors(),
             )
 
@@ -198,13 +254,13 @@ def create_monitoring_interface():
             refresh_all,
             None,
             [
-                summary_display,
-                llm_display,
-                user_display,
-                tool_display,
-                retry_display,
+                summary_table,
+                llm_table,
+                user_table,
+                tool_table,
+                retry_table,
                 queries_table,
-                latency_display,
+                latency_table,
                 errors_display,
             ],
         )
@@ -233,13 +289,13 @@ def create_monitoring_interface():
             auto_refresh_handler,
             inputs=[auto_refresh],
             outputs=[
-                summary_display,
-                llm_display,
-                user_display,
-                tool_display,
-                retry_display,
+                summary_table,
+                llm_table,
+                user_table,
+                tool_table,
+                retry_table,
                 queries_table,
-                latency_display,
+                latency_table,
                 errors_display,
             ],
         )

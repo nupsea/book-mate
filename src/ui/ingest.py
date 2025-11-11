@@ -206,30 +206,6 @@ def create_ingest_interface():
 
         with gr.Row():
             with gr.Column(scale=2):
-                gr.Markdown(
-                    """
-                **How to use:**
-                1. Upload your book file (.txt format)
-                2. Provide book title and unique slug
-                3. Give an example chapter heading from your book
-                4. Click "Test Pattern" to verify chapter detection
-                5. If successful, click "Ingest Book"
-
-                **Chapter Pattern Examples:**
-                - `CHAPTER I.` → Matches "CHAPTER I.", "CHAPTER II.", etc.
-                - `BOOK II` → Matches "BOOK I", "BOOK II", etc.
-                - `II.` → Matches "I. Title", "II. Title", etc. (with any title after)
-                - `Chapter 2` → Matches "Chapter 1", "Chapter 2", etc.
-                - `THE * BOOK` → Matches "THE FIRST BOOK", "THE SECOND BOOK", etc.
-
-                **Tips:**
-                - Use any chapter number as your example (not just the first)
-                - For patterns like "II. A SCANDAL", just enter "II." (title is auto-matched)
-                - Use `*` as wildcard only for spelled-out numbers (FIRST, SECOND, etc.)
-                """
-                )
-
-                gr.Markdown("---")
                 file_upload = gr.File(
                     label="Upload Book File (.txt)", file_types=[".txt"]
                 )
@@ -245,22 +221,20 @@ def create_ingest_interface():
                 slug_input = gr.Textbox(
                     label="Book Slug (unique identifier)",
                     placeholder="mma",
-                    info="Required: 2-20 chars, lowercase, letters/numbers/-/_ only",
+                    info="2-20 chars, lowercase, letters/numbers/-/_ only",
                     max_lines=1,
                 )
 
-                gr.Markdown("#### Chapter Pattern")
-
                 skip_chapters_check = gr.Checkbox(
-                    label="Skip chapter detection (use chunking only)",
+                    label="Skip chapter detection (use auto-chunking)",
                     value=False,
-                    info="Enable this if book has no clear chapters or complex structure",
+                    info="Enable if book has no clear chapters or complex structure",
                 )
 
                 chapter_example_input = gr.Textbox(
                     label="Chapter Pattern Example",
-                    placeholder="e.g., CHAPTER I. or II. or THE * BOOK",
-                    info="Copy a chapter heading from your book (any chapter number works)",
+                    placeholder="e.g., CHAPTER I. or II. or BOOK II",
+                    info="Enter any chapter heading from your book, then test pattern. Examples: 'CHAPTER I.', 'BOOK II', 'II.'",
                     lines=1,
                     visible=True,
                 )
@@ -269,20 +243,14 @@ def create_ingest_interface():
 
                 pattern_test_output = gr.Textbox(
                     label="Pattern Test Results",
-                    lines=8,
+                    lines=6,
                     interactive=False,
                     visible=True,
                 )
 
                 nested_structure_note = gr.Markdown(
                     """
-                **[NOTE] Important for nested structures:**
-                If your book has PART > CHAPTER structure (like Gulliver's Travels),
-                use the **higher level** pattern:
-                - RECOMMENDED: `PART I. A` (splits by parts)
-                - AVOID: `CHAPTER I.` (will find all chapters across all parts)
-
-                If unsure, enable "Skip chapter detection" to use automatic chunking.
+                **Note:** For nested structures (PART > CHAPTER), use the higher level pattern (e.g., `PART I.` instead of `CHAPTER I.`)
                 """,
                     visible=True,
                 )
@@ -310,6 +278,8 @@ def create_ingest_interface():
                     datatype=["str", "str", "str", "number", "str"],
                     interactive=False,
                     wrap=True,
+                    column_widths=["15%", "25%", "20%", "12%", "28%"],
+                    max_height=800,
                 )
 
                 gr.Markdown("#### Delete Book")

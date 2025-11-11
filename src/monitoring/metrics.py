@@ -326,7 +326,7 @@ class MetricsCollector:
     def _format_user_rating(self, rating: Optional[int]) -> str:
         """Format user rating for display."""
         if rating is None:
-            return "⭐ Not rated"
+            return "○ Not rated"
         return "⭐" * rating + f" ({rating}/5)"
 
     def get_latency_buckets(self) -> dict[str, int]:

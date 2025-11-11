@@ -66,6 +66,21 @@ Go to the "Add Book" tab:
 4. Click "Test Pattern" to verify chapter detection
 5. Click "Ingest Book" to index the content
 
+** Chapter Detection Tips **:
+
+Summary of Recommended Input Patterns:
+
+  | Book                | Recommended Pattern       | Expected Chapters | Reasoning                                                           |
+  |---------------------|---------------------------|-------------------|---------------------------------------------------------------------|
+  | Alice in Wonderland | CHAPTER I.                | 12                | Chapters labeled as "CHAPTER I.", "CHAPTER II.", etc.               |
+  | Sherlock Holmes     | I.*                       | 12                | Need to match I. A SCANDAL, II. THE RED-HEADED LEAGUE (NOT bare I.) |
+  | War of the Worlds   | I.                        | 27                | Bare numerals only: I., II., III. (title on next line)              |
+  | Gulliver's Travels  | PART I.                   | 4                 | Parts labeled as "PART I.", "PART II.", etc.                        |
+  | Meditations         | THE * BOOK                | 12                | Spelled-out: "THE FIRST BOOK", "THE SECOND BOOK"                    |
+  | The Odyssey         | BOOK I                    | 24                | Books labeled as "BOOK I", "BOOK II" (no period)                    |
+
+#### UI
+
 ![Add Book](image-2.png)
 
 ### 2. Chat with Books
