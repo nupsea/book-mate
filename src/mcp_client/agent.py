@@ -264,10 +264,15 @@ class BookMateAgent:
     def _prepare_conversation(self, user_message: str, conversation_history: list = None) -> list:
         """
         Prepare conversation history with system prompt and user message.
+        Automatically truncates history if it exceeds token limit.
 
         Returns:
             Updated conversation history
         """
+        import tiktoken
+
+        MAX_HISTORY_TOKENS = 50000  # Reserve ~50k tokens for conversation history
+
         # Get available books for system prompt
         available_books, self.title_to_slug = self._get_available_books()
 
@@ -288,6 +293,27 @@ class BookMateAgent:
                 conversation_history = [system_prompt] + conversation_history
             else:
                 print(f"[CHAT] CONTINUING conversation with existing system prompt")
+
+            # Truncate old messages if history is too long
+            if len(conversation_history) > 2:
+                enc = tiktoken.get_encoding("cl100k_base")
+
+                # Count tokens in conversation
+                total_tokens = sum(
+                    len(enc.encode(str(msg.get("content", ""))))
+                    for msg in conversation_history
+                )
+
+                if total_tokens > MAX_HISTORY_TOKENS:
+                    print(f"[CHAT] History too long ({total_tokens} tokens), truncating...")
+
+                    # Remove old messages (keep system prompt at index 0)
+                    while total_tokens > MAX_HISTORY_TOKENS and len(conversation_history) > 2:
+                        removed_msg = conversation_history.pop(1)
+                        removed_tokens = len(enc.encode(str(removed_msg.get("content", ""))))
+                        total_tokens -= removed_tokens
+
+                    print(f"[CHAT] Truncated to {len(conversation_history)} messages ({total_tokens} tokens)")
 
         print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
 
