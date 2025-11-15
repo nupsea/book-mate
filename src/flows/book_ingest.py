@@ -5,7 +5,7 @@ Book ingestion pipeline - plain Python script.
 import asyncio
 from pathlib import Path
 
-from src.content.reader import GutenbergReader
+from src.content.reader import GutenbergReader, PDFReader
 from src.content.store import PgresStore
 from src.llm.generator import SummaryGenerator
 from src.search.hybrid import FusionRetriever
@@ -45,7 +45,16 @@ def read_and_parse(
     overlap: int = 100,
 ):
     """Read file and parse into chunks."""
-    reader = GutenbergReader(file_path, slug, split_pattern=split_pattern)
+    path = Path(file_path)
+    file_extension = path.suffix.lower()
+
+    # Choose reader based on file extension
+    if file_extension == ".pdf":
+        reader = PDFReader(file_path, slug, split_pattern=split_pattern)
+    else:
+        # Default to GutenbergReader for .txt files
+        reader = GutenbergReader(file_path, slug, split_pattern=split_pattern)
+
     chunks = reader.parse(max_tokens=max_tokens, overlap=overlap)
 
     return {

@@ -207,7 +207,7 @@ def create_ingest_interface():
         with gr.Row():
             with gr.Column(scale=2):
                 file_upload = gr.File(
-                    label="Upload Book File (.txt)", file_types=[".txt"]
+                    label="Upload Book File (.txt or .pdf)", file_types=[".txt", ".pdf"]
                 )
 
                 title_input = gr.Textbox(
