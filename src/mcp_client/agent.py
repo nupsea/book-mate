@@ -13,7 +13,6 @@ from src.monitoring.tracer import init_phoenix_tracing
 from src.mcp_client.prompts import (
     get_system_prompt,
     get_citation_reminder,
-    get_rephrase_prompt,
 )
 
 # Initialize Phoenix tracing once at module load
@@ -28,7 +27,6 @@ class BookMateAgent:
         self.read_stream = None
         self.write_stream = None
         self.judge = ResponseJudge(self.client)
-        self.failed_searches = set()  # Track failed search queries to prevent duplicates
 
     async def connect_to_mcp_server(self):
         """Connect to the MCP server."""
@@ -130,41 +128,174 @@ class BookMateAgent:
             print(f"[WARN] Could not load book list: {e}")
             return "Book list unavailable.", {}
 
-    async def _rephrase_query(self, original_query: str, book_title: str = None) -> str:
+    async def _handle_tool_calls(
+        self,
+        assistant_message,
+        conversation_history: list,
+        timer: QueryTimer
+    ) -> list:
         """
-        Use LLM to rephrase a search query that returned no results.
-
-        Args:
-            original_query: The original search query
-            book_title: Optional book title for context
+        Handle all tool call execution.
 
         Returns:
-            Rephrased query string
+            Updated conversation history with tool results
         """
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
+        # Add assistant's tool call request to history
+        conversation_history.append(
+            {
+                "role": "assistant",
+                "content": assistant_message.content,
+                "tool_calls": [
                     {
-                        "role": "system",
-                        "content": "You are a search query optimization assistant.",
-                    },
-                    {
-                        "role": "user",
-                        "content": get_rephrase_prompt(original_query, book_title),
-                    },
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in assistant_message.tool_calls
                 ],
-                temperature=0.3,
+            }
+        )
+
+        # Execute each tool call via MCP
+        for tool_call in assistant_message.tool_calls:
+            function_name = tool_call.function.name
+
+            # Track tool call
+            timer.add_tool_call(function_name)
+
+            try:
+                function_args = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] Invalid JSON in tool arguments: {e}")
+                function_args = {}
+
+            # Translate book title to slug if needed
+            function_args, _ = self._translate_book_identifier(function_args)
+
+            print(f"[TOOL] Calling: {function_name}({function_args})")
+
+            # Call MCP server (already has error handling)
+            tool_result = await self.call_mcp_tool(
+                function_name, function_args
             )
 
-            rephrased = response.choices[0].message.content.strip()
-            print(f"[RETRY] Original query: '{original_query}'")
-            print(f"[RETRY] Rephrased query: '{rephrased}'")
-            return rephrased
+            # Track search results for metrics
+            if function_name == "search_book":
+                results_count = self._extract_search_results_count(tool_result)
+                timer.set_num_results(results_count)
+                print(f"[SEARCH] Found {results_count} results")
+            else:
+                results_count = -1
+                print(f"[TOOL] Completed: {function_name}")
 
-        except Exception as e:
-            print(f"[RETRY] Error rephrasing query: {e}")
-            return original_query
+            print()
+
+            # Add tool result to conversation with citation reminder
+            tool_content = tool_result
+            if function_name == "search_book" and results_count > 0:
+                tool_content += get_citation_reminder()
+
+            conversation_history.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_content,
+                }
+            )
+
+        return conversation_history
+
+    def _translate_book_identifier(self, function_args: dict) -> tuple[dict, str]:
+        """
+        Translate book title to slug if needed.
+
+        Returns:
+            (updated_function_args, book_title_for_retry)
+        """
+        book_title_for_retry = None
+
+        if "book_identifier" in function_args:
+            book_id = function_args["book_identifier"]
+            print(f"[TOOL] LLM provided book_identifier: '{book_id}'")
+            print(
+                f"[TOOL] Available mappings: {self.title_to_slug if hasattr(self, 'title_to_slug') else 'NONE'}"
+            )
+
+            # Try to match as title first (case-insensitive)
+            if (
+                hasattr(self, "title_to_slug")
+                and book_id.lower() in self.title_to_slug
+            ):
+                original_id = book_id
+                function_args["book_identifier"] = self.title_to_slug[
+                    book_id.lower()
+                ]
+                book_title_for_retry = original_id  # Store title for retry context
+                print(
+                    f"[TOOL] Translated '{original_id}' -> '{function_args['book_identifier']}'"
+                )
+            else:
+                print(f"[TOOL] NO TRANSLATION - passing '{book_id}' as-is")
+
+        return function_args, book_title_for_retry
+
+    def _finalize_response(
+        self,
+        response_text: str,
+        user_message: str,
+        conversation_history: list,
+        timer: QueryTimer
+    ) -> tuple[str, list, str]:
+        """
+        Add response to history and assess quality.
+
+        Returns:
+            (response_text, updated_conversation_history, query_id)
+        """
+        conversation_history.append({"role": "assistant", "content": response_text})
+        timer.set_response(response_text)
+        score, reasoning = self.judge.assess_response(user_message, response_text)
+        timer.set_llm_assessment(score, reasoning)
+        return response_text, conversation_history, timer.query_id
+
+    def _prepare_conversation(self, user_message: str, conversation_history: list = None) -> list:
+        """
+        Prepare conversation history with system prompt and user message.
+
+        Returns:
+            Updated conversation history
+        """
+        # Get available books for system prompt
+        available_books, self.title_to_slug = self._get_available_books()
+
+        # Create system prompt
+        system_prompt = {
+            "role": "system",
+            "content": get_system_prompt(available_books),
+        }
+
+        # Check if this is a new conversation or needs system prompt
+        if not conversation_history:
+            print(f"[CHAT] Creating NEW conversation")
+            conversation_history = [system_prompt]
+        else:
+            # Ensure system prompt exists in continuing conversations
+            if not conversation_history or conversation_history[0].get("role") != "system":
+                print(f"[CHAT] CONTINUING conversation - prepending system prompt")
+                conversation_history = [system_prompt] + conversation_history
+            else:
+                print(f"[CHAT] CONTINUING conversation with existing system prompt")
+
+        print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
+
+        # Add user message
+        conversation_history.append({"role": "user", "content": user_message})
+
+        return conversation_history
+
 
     def _extract_search_results_count(self, tool_result: str) -> int:
         """
@@ -218,33 +349,10 @@ class BookMateAgent:
                 if not user_message or not user_message.strip():
                     raise ValueError("User message cannot be empty.")
 
-                # Get available books for system prompt
-                available_books, self.title_to_slug = self._get_available_books()
-
-                # Create system prompt
-                system_prompt = {
-                    "role": "system",
-                    "content": get_system_prompt(available_books),
-                }
-
-                # Check if this is a new conversation or needs system prompt
-                if not conversation_history:
-                    print(f"[CHAT] Creating NEW conversation")
-                    conversation_history = [system_prompt]
-                    # Clear failed searches for new conversation
-                    self.failed_searches.clear()
-                else:
-                    # Ensure system prompt exists in continuing conversations
-                    if not conversation_history or conversation_history[0].get("role") != "system":
-                        print(f"[CHAT] CONTINUING conversation - prepending system prompt")
-                        conversation_history = [system_prompt] + conversation_history
-                    else:
-                        print(f"[CHAT] CONTINUING conversation with existing system prompt")
-
-                print(f"[CHAT] Title-to-slug mapping: {self.title_to_slug}")
-
-                # Add user message
-                conversation_history.append({"role": "user", "content": user_message})
+                # Prepare conversation with system prompt and user message
+                conversation_history = self._prepare_conversation(
+                    user_message, conversation_history
+                )
 
                 print(f"[CHAT] Full conversation being sent to LLM:")
                 for i, msg in enumerate(conversation_history):
@@ -274,193 +382,10 @@ class BookMateAgent:
 
                 # Check if the model wants to call tools
                 if assistant_message.tool_calls:
-                    # Add assistant's tool call request to history
-                    conversation_history.append(
-                        {
-                            "role": "assistant",
-                            "content": assistant_message.content,
-                            "tool_calls": [
-                                {
-                                    "id": tc.id,
-                                    "type": "function",
-                                    "function": {
-                                        "name": tc.function.name,
-                                        "arguments": tc.function.arguments,
-                                    },
-                                }
-                                for tc in assistant_message.tool_calls
-                            ],
-                        }
+                    # Execute all tool calls and update conversation history
+                    conversation_history = await self._handle_tool_calls(
+                        assistant_message, conversation_history, timer
                     )
-
-                    # Execute each tool call via MCP
-                    for tool_call in assistant_message.tool_calls:
-                        function_name = tool_call.function.name
-
-                        # Track tool call
-                        timer.add_tool_call(function_name)
-
-                        try:
-                            function_args = json.loads(tool_call.function.arguments)
-                        except json.JSONDecodeError as e:
-                            print(f"[ERROR] Invalid JSON in tool arguments: {e}")
-                            function_args = {}
-
-                        # Store original query for potential retry
-                        original_search_query = (
-                            function_args.get("query")
-                            if function_name == "search_book"
-                            else None
-                        )
-                        book_title_for_retry = None
-
-                        # Translate book title to slug if needed
-                        if "book_identifier" in function_args:
-                            book_id = function_args["book_identifier"]
-                            print(f"[TOOL] LLM provided book_identifier: '{book_id}'")
-                            print(
-                                f"[TOOL] Available mappings: {self.title_to_slug if hasattr(self, 'title_to_slug') else 'NONE'}"
-                            )
-
-                            # Try to match as title first (case-insensitive)
-                            if (
-                                hasattr(self, "title_to_slug")
-                                and book_id.lower() in self.title_to_slug
-                            ):
-                                original_id = book_id
-                                function_args["book_identifier"] = self.title_to_slug[
-                                    book_id.lower()
-                                ]
-                                book_title_for_retry = (
-                                    original_id  # Store title for retry context
-                                )
-                                print(
-                                    f"[TOOL] Translated '{original_id}' -> '{function_args['book_identifier']}'"
-                                )
-                            else:
-                                print(
-                                    f"[TOOL] NO TRANSLATION - passing '{book_id}' as-is"
-                                )
-
-                        # Check for duplicate failed searches
-                        if function_name == "search_book":
-                            search_key = (
-                                function_args.get("query", "").lower(),
-                                function_args.get("book_identifier", ""),
-                            )
-                            if search_key in self.failed_searches:
-                                print(
-                                    f"[SEARCH] Skipping duplicate failed search: {function_args.get('query')}"
-                                )
-                                tool_result = (
-                                    f"This search query already failed previously. "
-                                    f"Please use available context (book summaries, chapter summaries) instead."
-                                )
-                                # Don't execute the tool call
-                                conversation_history.append(
-                                    {
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "content": tool_result,
-                                    }
-                                )
-                                continue
-
-                        print(f"[TOOL] Calling: {function_name}({function_args})")
-
-                        # Call MCP server (already has error handling)
-                        tool_result = await self.call_mcp_tool(
-                            function_name, function_args
-                        )
-
-                        # Check if search returned 0 results and attempt retry
-                        if function_name == "search_book" and original_search_query:
-                            results_count = self._extract_search_results_count(
-                                tool_result
-                            )
-                            timer.set_num_results(results_count)
-
-                            if results_count == 0:
-                                print(
-                                    f"[SEARCH] No results found for: '{original_search_query}'"
-                                )
-                                print(f"[RETRY] Attempting query rephrase...")
-
-                                # Rephrase the query
-                                rephrased_query = await self._rephrase_query(
-                                    original_search_query, book_title_for_retry
-                                )
-
-                                # Retry with rephrased query
-                                retry_args = function_args.copy()
-                                retry_args["query"] = rephrased_query
-
-                                print(f"[RETRY] Searching with rephrased query...")
-                                retry_result = await self.call_mcp_tool(
-                                    function_name, retry_args
-                                )
-
-                                retry_count = self._extract_search_results_count(
-                                    retry_result
-                                )
-
-                                # Track retry in metrics
-                                timer.set_retry_info(
-                                    original_query=original_search_query,
-                                    rephrased_query=rephrased_query,
-                                    retry_results=retry_count,
-                                )
-
-                                if retry_count > 0:
-                                    # Use retry result since it found something
-                                    tool_result = retry_result
-                                    print(
-                                        f"[RETRY] Found {retry_count} results with rephrased query"
-                                    )
-                                else:
-                                    # Both failed - mark as fallback to context
-                                    timer.set_fallback_to_context(True)
-                                    print(
-                                        f"[RETRY] No results from retry. LLM will respond from available context."
-                                    )
-                                    # Mark both queries as failed to prevent duplicate attempts
-                                    self.failed_searches.add(
-                                        (
-                                            original_search_query.lower(),
-                                            function_args.get("book_identifier", ""),
-                                        )
-                                    )
-                                    self.failed_searches.add(
-                                        (
-                                            rephrased_query.lower(),
-                                            function_args.get("book_identifier", ""),
-                                        )
-                                    )
-                                    print(
-                                        f"[RETRY] Marked queries as failed to prevent duplicates"
-                                    )
-                                    # Keep original tool result showing 0 results
-                                    # LLM will see this and respond from context
-                            elif results_count > 0:
-                                print(f"[SEARCH] Found {results_count} results")
-                        else:
-                            # Non-search tools - just show completion
-                            print(f"[TOOL] Completed: {function_name}")
-
-                        print()
-
-                        # Add tool result to conversation with citation reminder
-                        tool_content = tool_result
-                        if function_name == "search_book" and results_count > 0:
-                            tool_content += get_citation_reminder()
-
-                        conversation_history.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "content": tool_content,
-                            }
-                        )
 
                     # Get final response from OpenAI after tool execution
                     final_response = self.client.chat.completions.create(
@@ -468,34 +393,18 @@ class BookMateAgent:
                     )
 
                     final_message = final_response.choices[0].message.content
-                    conversation_history.append(
-                        {"role": "assistant", "content": final_message}
-                    )
 
-                    # Store response and assess quality
-                    timer.set_response(final_message)
-                    score, reasoning = self.judge.assess_response(
-                        user_message, final_message
+                    return self._finalize_response(
+                        final_message, user_message, conversation_history, timer
                     )
-                    timer.set_llm_assessment(score, reasoning)
-
-                    return final_message, conversation_history, timer.query_id
 
                 else:
                     # No tool calls, just return the response
                     response_text = assistant_message.content
-                    conversation_history.append(
-                        {"role": "assistant", "content": response_text}
-                    )
 
-                    # Store response and assess quality
-                    timer.set_response(response_text)
-                    score, reasoning = self.judge.assess_response(
-                        user_message, response_text
+                    return self._finalize_response(
+                        response_text, user_message, conversation_history, timer
                     )
-                    timer.set_llm_assessment(score, reasoning)
-
-                    return response_text, conversation_history, timer.query_id
 
             except Exception as e:
                 error_msg = f"Error during chat: {str(e)}"
