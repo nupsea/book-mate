@@ -12,11 +12,14 @@ from src.monitoring.metrics import metrics_collector
 query_id_map = {}
 
 
-async def respond(message, chat_history, selected_book, ui):
+async def respond(message, chat_history, selected_book, selected_model, ui):
     """Handle chat interactions."""
     if not message.strip():
         yield chat_history, message, gr.update(visible=False)
         return
+
+    # Update model if changed (with proper cleanup)
+    await ui.set_model(selected_model)
 
     # Add user message with loading indicator for bot
     chat_history.append([message, "Thinking..."])
@@ -62,16 +65,31 @@ def create_chat_interface(ui):
             with gr.Column(scale=2):
                 gr.Markdown("### Chat with Books")
 
-                book_dropdown = gr.Dropdown(
-                    choices=[("Select a book...", "none")]
-                    + [
-                        (f"{title}", slug)
-                        for slug, title, _, _, _ in get_available_books()
-                    ],
-                    value="none",
-                    label="Select Book (optional)",
-                    info="Auto-injects book title into queries",
-                )
+                with gr.Row():
+                    book_dropdown = gr.Dropdown(
+                        choices=[("Select a book...", "none")]
+                        + [
+                            (f"{title}", slug)
+                            for slug, title, _, _, _ in get_available_books()
+                        ],
+                        value="none",
+                        label="Select Book (optional)",
+                        info="Auto-injects book title into queries",
+                        scale=2,
+                    )
+
+                    model_dropdown = gr.Dropdown(
+                        choices=[
+                            ("GPT-4o Mini (Fast & Cheap)", "gpt-4o-mini"),
+                            ("GPT-4o (Balanced)", "gpt-4o"),
+                            ("GPT-4 Turbo", "gpt-4-turbo"),
+                            ("GPT-3.5 Turbo (Fastest)", "gpt-3.5-turbo"),
+                        ],
+                        value="gpt-4o-mini",
+                        label="Model",
+                        info="Select OpenAI model for chat",
+                        scale=1,
+                    )
 
                 chatbot = gr.Chatbot(
                     height=450, show_label=False, avatar_images=(None, None)
@@ -133,9 +151,9 @@ def create_chat_interface(ui):
                 )
 
         # Event handlers - wrap to pass ui
-        async def handle_submit(msg_text, history, book_sel):
+        async def handle_submit(msg_text, history, book_sel, model_sel):
             async for result_history, result_msg, feedback_update in respond(
-                msg_text, history, book_sel, ui
+                msg_text, history, book_sel, model_sel, ui
             ):
                 yield result_history, result_msg, feedback_update
 
@@ -144,10 +162,10 @@ def create_chat_interface(ui):
             return status, gr.update(visible=False)
 
         msg.submit(
-            handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row]
+            handle_submit, [msg, chatbot, book_dropdown, model_dropdown], [chatbot, msg, feedback_row]
         )
         send_btn.click(
-            handle_submit, [msg, chatbot, book_dropdown], [chatbot, msg, feedback_row]
+            handle_submit, [msg, chatbot, book_dropdown, model_dropdown], [chatbot, msg, feedback_row]
         )
         clear_btn.click(
             lambda: ([], gr.update(visible=False)), None, [chatbot, feedback_row]

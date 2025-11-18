@@ -21,15 +21,31 @@ class BookMateUI:
     def __init__(self):
         self.agent = None
         self.api_key = os.getenv("OPENAI_API_KEY") or ""
+        self.model = "gpt-4o-mini"  # Default model
 
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")
 
+    async def set_model(self, model: str):
+        """Set the OpenAI model and reinitialize agent if needed."""
+        if model != self.model:
+            print(f"Changing model from {self.model} to {model}")
+            self.model = model
+            # Properly cleanup old agent before resetting
+            if self.agent:
+                try:
+                    await self.agent.close()
+                    print("Old agent cleaned up successfully")
+                except Exception as e:
+                    print(f"Warning: Error cleaning up old agent: {e}")
+            # Reset agent to reinitialize with new model
+            self.agent = None
+
     async def init_agent(self):
         """Initialize the MCP agent connection."""
         if self.agent is None:
-            print("Initializing agent...")
-            self.agent = BookMateAgent(self.api_key)
+            print(f"Initializing agent with model: {self.model}")
+            self.agent = BookMateAgent(self.api_key, self.model)
             try:
                 await self.agent.connect_to_mcp_server()
                 print("Agent initialized and connected to MCP Server")

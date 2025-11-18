@@ -73,9 +73,9 @@ class SemanticRetriever:
             return []
 
         vec = self.embedder.encode([query], normalize_embeddings=True)[0].tolist()
-        hits = self.qdrant.search(
-            collection_name=SemanticRetriever.COLLECTION, query_vector=vec, limit=topk
-        )
+        hits = self.qdrant.query_points(
+            collection_name=SemanticRetriever.COLLECTION, query=vec, limit=topk
+        ).points
         return [
             {"id": h.payload["id"], "text": h.payload["text"], "score": h.score}
             for h in hits

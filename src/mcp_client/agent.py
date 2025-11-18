@@ -20,9 +20,11 @@ init_phoenix_tracing()
 
 
 class BookMateAgent:
-    def __init__(self, openai_api_key: str):
+    def __init__(self, openai_api_key: str, model: str = "gpt-4o-mini"):
         self.client = OpenAI(api_key=openai_api_key)
+        self.model = model
         self.session: ClientSession | None = None
+        self.stdio_context = None
         self.tools_cache = []
         self.read_stream = None
         self.write_stream = None
@@ -187,6 +189,40 @@ class BookMateAgent:
                 results_count = self._extract_search_results_count(tool_result)
                 timer.set_num_results(results_count)
                 print(f"[SEARCH] Found {results_count} results")
+
+                # Retry logic: if no results, rephrase and try once more
+                if results_count == 0:
+                    original_query = function_args.get("query", "")
+                    rephrased_query = self._rephrase_query(original_query)
+
+                    if rephrased_query and rephrased_query != original_query:
+                        print(f"[RETRY] Original: '{original_query}'")
+                        print(f"[RETRY] Rephrased: '{rephrased_query}'")
+
+                        # Retry search with rephrased query
+                        retry_args = function_args.copy()
+                        retry_args["query"] = rephrased_query
+                        retry_result = await self.call_mcp_tool(function_name, retry_args)
+                        retry_count = self._extract_search_results_count(retry_result)
+
+                        print(f"[RETRY] Found {retry_count} results")
+
+                        # Track retry in metrics
+                        timer.set_retry_info(original_query, rephrased_query, retry_count)
+
+                        # Use retry result if it found something
+                        if retry_count > 0:
+                            tool_result = retry_result
+                            results_count = retry_count
+                            timer.set_num_results(results_count)
+                            print(f"[RETRY] Success - using retry results")
+                        else:
+                            print(f"[RETRY] No improvement - LLM will use context knowledge")
+                            timer.set_fallback_to_context()
+                    else:
+                        # Couldn't rephrase, fall back to context
+                        print(f"[RETRY] Could not rephrase query - LLM will use context knowledge")
+                        timer.set_fallback_to_context()
             else:
                 results_count = -1
                 print(f"[TOOL] Completed: {function_name}")
@@ -323,6 +359,42 @@ class BookMateAgent:
         return conversation_history
 
 
+    def _rephrase_query(self, original_query: str) -> str:
+        """
+        Use LLM to rephrase a query for better search results.
+
+        Args:
+            original_query: The original search query that returned no results
+
+        Returns:
+            Rephrased query, or empty string if rephrasing fails
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Use fast model for rephrasing
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a search query optimizer. Rephrase the user's query to improve search results. Use simpler terms, remove stop words, and focus on key concepts. Return ONLY the rephrased query, no explanation."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Rephrase this search query: {original_query}"
+                    }
+                ],
+                temperature=0.3,
+                max_tokens=50
+            )
+
+            rephrased = response.choices[0].message.content.strip()
+            # Remove quotes if LLM added them
+            rephrased = rephrased.strip('"\'')
+            return rephrased
+
+        except Exception as e:
+            print(f"[RETRY] Error rephrasing query: {e}")
+            return ""
+
     def _extract_search_results_count(self, tool_result: str) -> int:
         """
         Parse the number of results from a search_book tool response.
@@ -398,7 +470,7 @@ class BookMateAgent:
 
                 # Call OpenAI with function calling
                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=self.model,
                     messages=conversation_history,
                     tools=self.tools_cache,
                     tool_choice="auto",
@@ -415,7 +487,7 @@ class BookMateAgent:
 
                     # Get final response from OpenAI after tool execution
                     final_response = self.client.chat.completions.create(
-                        model="gpt-4o-mini", messages=conversation_history
+                        model=self.model, messages=conversation_history
                     )
 
                     final_message = final_response.choices[0].message.content
@@ -443,11 +515,20 @@ class BookMateAgent:
                 )
 
     async def close(self):
-        """Close the MCP session."""
-        if self.session:
-            await self.session.__aexit__(None, None, None)
-        if hasattr(self, "stdio_context"):
-            await self.stdio_context.__aexit__(None, None, None)
+        """Close the MCP session and cleanup resources."""
+        try:
+            if self.session:
+                await self.session.__aexit__(None, None, None)
+                self.session = None
+        except Exception as e:
+            print(f"Warning: Error closing session: {e}")
+
+        try:
+            if self.stdio_context:
+                await self.stdio_context.__aexit__(None, None, None)
+                self.stdio_context = None
+        except Exception as e:
+            print(f"Warning: Error closing stdio context: {e}")
 
 
 async def main():
