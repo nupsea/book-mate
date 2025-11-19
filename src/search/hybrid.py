@@ -59,7 +59,7 @@ class FusionRetriever:
             scores[c["id"]] += (1 - self.alpha) * (1.0 / rank)
         return [cid for cid, _ in sorted(scores.items(), key=lambda x: -x[1])[:topk]]
 
-    def id_search(self, query: str, topk=7, use_bm25=True):
+    def id_search(self, query: str, topk=7, use_bm25=True, book_slug=None):
         """
         Hybrid search with automatic BM25 index loading.
 
@@ -67,6 +67,7 @@ class FusionRetriever:
             query: Search query
             topk: Number of results to return
             use_bm25: If True, load and use BM25 index. If False, vector-only search.
+            book_slug: If provided, only search within this book (e.g., 'aiw', 'gtr')
         """
         if use_bm25 and self.bm25.N == 0:
             try:
@@ -75,10 +76,10 @@ class FusionRetriever:
                 logger.warning("BM25 index not found, using vector-only search")
                 use_bm25 = False
 
-        embed_results = self.vec.search(query, topk * 2)
+        embed_results = self.vec.search(query, topk * 2, book_slug=book_slug)
 
         if not use_bm25:
             return [c["id"] for c in embed_results[:topk]]
 
-        bm25_results = self.bm25.search(query, topk * 2)
+        bm25_results = self.bm25.search(query, topk * 2, book_slug=book_slug)
         return self.weighted_fusion(bm25_results, embed_results, topk)

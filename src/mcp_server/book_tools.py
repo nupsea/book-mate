@@ -25,15 +25,13 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 import mcp.server.stdio
 
-from src.flows.book_query import (
-    search_book_content,
-    get_book_summary,
-    get_chapter_summaries,
-    # validate_book_exists
-)
+from src.mcp_server.tool_handlers import BookToolHandlers
 
 logger = logging.getLogger(__name__)
 app = Server("book-mate-server")
+
+# Initialize tool handlers
+tool_handlers = BookToolHandlers()
 
 
 @app.list_tools()
@@ -87,73 +85,46 @@ async def list_tools() -> list[Tool]:
                 "required": ["book_identifier"],
             },
         ),
+        Tool(
+            name="search_multiple_books",
+            description="Search across multiple books simultaneously for comparative analysis. Use this when you need to compare themes, concepts, perspectives, or topics across different authors or works. Returns relevant passages from each book with clear source attribution. TIP: Use concrete, specific search terms for best results. If no results found, consider getting book summaries instead.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to use across all books. Use specific, concrete terms rather than abstract concepts. For better results with comparative questions, include multiple related terms separated by spaces (e.g., 'heroism courage brave warrior' instead of just 'heroism')"
+                    },
+                    "book_identifiers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of 2-5 book titles to search and compare (e.g., ['The Meditations', 'The Odyssey'])",
+                        "minItems": 2,
+                        "maxItems": 5
+                    },
+                    "limit_per_book": {
+                        "type": "integer",
+                        "description": "Number of results to return from each book",
+                        "default": 3,
+                        "minimum": 1,
+                        "maximum": 5
+                    }
+                },
+                "required": ["query", "book_identifiers"],
+            },
+        ),
     ]
 
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    """
+    MCP tool call handler - dispatches to appropriate handler method.
 
-    if name == "search_book":
-        result = search_book_content(
-            query=arguments["query"],
-            book_identifier=arguments["book_identifier"],
-            limit=arguments.get("limit", 5),
-        )
-
-        # Debug logging
-        logger.debug(
-            f"Search result for '{arguments['query']}' in '{arguments['book_identifier']}':"
-        )
-        logger.debug(f"  - num_results: {result['num_results']}")
-        logger.debug(f"  - chunk_ids: {result.get('chunk_ids', [])}")
-        logger.debug(f"  - error: {result.get('error', 'None')}")
-
-        # Format results as readable text
-        if result.get("error"):
-            return [TextContent(type="text", text=f"Error: {result['error']}")]
-
-        if result["num_results"] == 0:
-            output = (
-                f"No results found for '{result['query']}' in book '{result['book']}'."
-            )
-        else:
-            output = f"Search results for '{result['query']}' in {result['book']}:\n\n"
-            for i, chunk in enumerate(result["chunks"], 1):
-                chunk_id = chunk.get("id", "unknown")
-
-                # Extract chapter number from chunk_id (format: slug_chapter_chunk_hash)
-                chapter_num = "?"
-                if "_" in chunk_id:
-                    parts = chunk_id.split("_")
-                    if len(parts) >= 2:
-                        chapter_num = (
-                            parts[1].lstrip("0") or "0"
-                        )  # Remove leading zeros
-
-                # Format citation
-                citation = f"[Chapter {chapter_num}, Source: {chunk_id}]"
-
-                output += f"Passage {i} {citation}:\n{chunk['text']}\n\n---\n\n"
-
-        return [TextContent(type="text", text=output)]
-
-    elif name == "get_book_summary":
-        result = get_book_summary(arguments["book_identifier"])
-        return [
-            TextContent(type="text", text=result["summary"] or "No summary available")
-        ]
-
-    elif name == "get_chapter_summaries":
-        result = get_chapter_summaries(arguments["book_identifier"])
-
-        output = f"Found {result['num_chapters']} chapters:\n\n"
-        for ch in result["chapters"]:
-            output += f"Chapter {ch['chapter_id']}:\n{ch['summary']}\n\n"
-
-        return [TextContent(type="text", text=output)]
-
-    else:
-        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    This is a thin wrapper that delegates all business logic to the
+    BookToolHandlers class for better modularity and testability.
+    """
+    return tool_handlers.dispatch(name, arguments)
 
 
 async def main():

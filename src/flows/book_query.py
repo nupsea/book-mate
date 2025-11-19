@@ -42,36 +42,30 @@ def search_book_content(query: str, book_identifier: str | int, limit: int = 5):
             }
 
         retriever = AdaptiveRetriever()
+        # Pass book_identifier as book_slug to filter search results DURING search, not after
         chunk_ids = retriever.id_search(
-            query, topk=limit * 3
-        )  # Get more results to filter
+            query, topk=limit, book_slug=book_identifier
+        )
 
-        logger.debug(f"Hybrid search returned {len(chunk_ids)} chunk IDs:")
+        logger.debug(f"Hybrid search returned {len(chunk_ids)} chunk IDs for book '{book_identifier}':")
         for i, cid in enumerate(chunk_ids[:10], 1):  # Show first 10
             logger.debug(f"  {i}. {cid}")
 
         # Fetch full chunk details from Qdrant by ID
         chunks_full = retriever.vec.get_chunks_by_ids(chunk_ids)
 
-        logger.debug(f"Filtering for book_identifier: '{book_identifier}'")
-        logger.debug(f"Looking for chunks starting with: '{book_identifier}_'")
-
-        # Filter chunks by book_identifier and truncate text
+        # Truncate text (no longer need to filter by book since search already did)
         chunks_with_text = []
         for chunk in chunks_full:
-            # Check if chunk belongs to this book (chunk ID format: book_slug_chapter_chunk_hash)
-            if chunk["id"].startswith(f"{book_identifier}_"):
-                text = chunk["text"]
-                chunks_with_text.append(
-                    {
-                        "id": chunk["id"],
-                        "text": text[:800] + "..." if len(text) > 800 else text,
-                    }
-                )
-                if len(chunks_with_text) >= limit:
-                    break
+            text = chunk["text"]
+            chunks_with_text.append(
+                {
+                    "id": chunk["id"],
+                    "text": text[:800] + "..." if len(text) > 800 else text,
+                }
+            )
 
-        logger.debug(f"After filtering: {len(chunks_with_text)} chunks matched")
+        logger.debug(f"Retrieved {len(chunks_with_text)} chunks with text")
 
         return {
             "query": query,

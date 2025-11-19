@@ -65,7 +65,7 @@ class SemanticRetriever:
         )
         logger.info("Inserted %d chunks into Qdrant", len(chunks))
 
-    def search(self, query, topk=7):
+    def search(self, query, topk=7, book_slug=None):
         if not self.qdrant.collection_exists(SemanticRetriever.COLLECTION):
             logger.warning(
                 "Collection '%s' does not exist in Qdrant", SemanticRetriever.COLLECTION
@@ -73,8 +73,25 @@ class SemanticRetriever:
             return []
 
         vec = self.embedder.encode([query], normalize_embeddings=True)[0].tolist()
+
+        # Build query filter if book_slug is provided
+        query_filter = None
+        if book_slug:
+            from qdrant_client.models import Filter, FieldCondition, MatchText
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="id",
+                        match=MatchText(text=book_slug)
+                    )
+                ]
+            )
+
         hits = self.qdrant.query_points(
-            collection_name=SemanticRetriever.COLLECTION, query=vec, limit=topk
+            collection_name=SemanticRetriever.COLLECTION,
+            query=vec,
+            limit=topk,
+            query_filter=query_filter
         ).points
         return [
             {"id": h.payload["id"], "text": h.payload["text"], "score": h.score}

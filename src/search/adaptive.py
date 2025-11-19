@@ -120,6 +120,7 @@ class AdaptiveRetriever(FusionRetriever):
         use_preprocessing: bool = True,
         use_dynamic_alpha: bool = False,
         candidate_multiplier: int = 3,
+        book_slug: str = None,
     ):
         """
         Adaptive search with query preprocessing.
@@ -133,6 +134,7 @@ class AdaptiveRetriever(FusionRetriever):
             use_preprocessing: Whether to preprocess query (recommended: True)
             use_dynamic_alpha: Whether to use dynamic alpha (recommended: False, use fixed α=0.7)
             candidate_multiplier: Retrieve topk * multiplier candidates before fusion
+            book_slug: If provided, only search within this book (e.g., 'aiw', 'gtr')
 
         Returns:
             List of chunk IDs
@@ -155,15 +157,15 @@ class AdaptiveRetriever(FusionRetriever):
                 self.load_bm25_index()
             except FileNotFoundError:
                 logger.warning("BM25 index not found, using vector-only search")
-                embed_results = self.vec.search(query, topk)
+                embed_results = self.vec.search(query, topk, book_slug=book_slug)
                 return [c["id"] for c in embed_results]
 
         # Retrieve more candidates for better fusion
         candidate_count = topk * candidate_multiplier
 
-        # Get results from both systems
-        embed_results = self.vec.search(query, candidate_count)
-        bm25_results = self.bm25.search(processed_query, candidate_count)
+        # Get results from both systems with book filtering
+        embed_results = self.vec.search(query, candidate_count, book_slug=book_slug)
+        bm25_results = self.bm25.search(processed_query, candidate_count, book_slug=book_slug)
 
         # Apply weighted fusion with dynamic alpha
         scores = {}

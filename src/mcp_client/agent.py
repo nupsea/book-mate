@@ -13,6 +13,7 @@ from src.monitoring.tracer import init_phoenix_tracing
 from src.mcp_client.prompts import (
     get_system_prompt,
     get_citation_reminder,
+    get_comparative_citation_reminder,
 )
 
 # Initialize Phoenix tracing once at module load
@@ -233,6 +234,8 @@ class BookMateAgent:
             tool_content = tool_result
             if function_name == "search_book" and results_count > 0:
                 tool_content += get_citation_reminder()
+            elif function_name == "search_multiple_books" and results_count > 0:
+                tool_content += get_comparative_citation_reminder()
 
             conversation_history.append(
                 {
@@ -246,13 +249,18 @@ class BookMateAgent:
 
     def _translate_book_identifier(self, function_args: dict) -> tuple[dict, str]:
         """
-        Translate book title to slug if needed.
+        Translate book title(s) to slug(s) if needed.
+
+        Handles both:
+        - book_identifier (single book)
+        - book_identifiers (multiple books for comparative search)
 
         Returns:
             (updated_function_args, book_title_for_retry)
         """
         book_title_for_retry = None
 
+        # Handle single book identifier
         if "book_identifier" in function_args:
             book_id = function_args["book_identifier"]
             print(f"[TOOL] LLM provided book_identifier: '{book_id}'")
@@ -275,6 +283,27 @@ class BookMateAgent:
                 )
             else:
                 print(f"[TOOL] NO TRANSLATION - passing '{book_id}' as-is")
+
+        # Handle multiple book identifiers (for comparative search)
+        if "book_identifiers" in function_args:
+            book_ids = function_args["book_identifiers"]
+            print(f"[TOOL] LLM provided book_identifiers: {book_ids}")
+
+            translated_ids = []
+            for book_id in book_ids:
+                if (
+                    hasattr(self, "title_to_slug")
+                    and book_id.lower() in self.title_to_slug
+                ):
+                    slug = self.title_to_slug[book_id.lower()]
+                    translated_ids.append(slug)
+                    print(f"[TOOL] Translated '{book_id}' -> '{slug}'")
+                else:
+                    # Keep as-is if not found (might already be a slug)
+                    translated_ids.append(book_id)
+                    print(f"[TOOL] NO TRANSLATION for '{book_id}' - passing as-is")
+
+            function_args["book_identifiers"] = translated_ids
 
         return function_args, book_title_for_retry
 

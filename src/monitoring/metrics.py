@@ -333,24 +333,24 @@ class MetricsCollector:
         """Get latency distribution in buckets."""
         with self._lock:
             buckets = {
-                "< 500ms": 0,
-                "500ms - 1s": 0,
+                "< 1s": 0,
                 "1s - 2s": 0,
                 "2s - 5s": 0,
-                "> 5s": 0,
+                "5s - 10s": 0,
+                "> 10s": 0,
             }
 
             for q in self.queries:
-                if q.latency_ms < 500:
-                    buckets["< 500ms"] += 1
-                elif q.latency_ms < 1000:
-                    buckets["500ms - 1s"] += 1
+                if q.latency_ms < 1000:
+                    buckets["< 1s"] += 1
                 elif q.latency_ms < 2000:
                     buckets["1s - 2s"] += 1
                 elif q.latency_ms < 5000:
                     buckets["2s - 5s"] += 1
+                elif q.latency_ms < 10000:
+                    buckets["5s - 10s"] += 1
                 else:
-                    buckets["> 5s"] += 1
+                    buckets["> 10s"] += 1
 
             return buckets
 

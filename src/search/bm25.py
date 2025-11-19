@@ -67,10 +67,19 @@ class BM25Retriever:
             score += idf * (numer / denom)
         return score
 
-    def search(self, query, topk=7):
+    def search(self, query, topk=7, book_slug=None):
         query_tokens = simple_tokenize(query)
-        scores = [self.score(query_tokens, i) for i in range(self.N)]
-        ranked = sorted(enumerate(scores), key=lambda x: -x[1])[:topk]
+
+        # Filter by book_slug if provided
+        if book_slug:
+            # Only score documents from the specified book
+            valid_indices = [i for i in range(self.N) if self.ids[i].startswith(f"{book_slug}_")]
+            scores = [(i, self.score(query_tokens, i)) for i in valid_indices]
+        else:
+            # Score all documents
+            scores = [(i, self.score(query_tokens, i)) for i in range(self.N)]
+
+        ranked = sorted(scores, key=lambda x: -x[1])[:topk]
         return [
             {"id": self.ids[i], "text": self.raw_docs[i], "score": s} for i, s in ranked
         ]
