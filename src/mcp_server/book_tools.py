@@ -46,7 +46,7 @@ async def list_tools() -> list[Tool]:
                     "query": {"type": "string", "description": "The search query"},
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
+                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
                     },
                     "limit": {
                         "type": "integer",
@@ -65,7 +65,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
+                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
                     }
                 },
                 "required": ["book_identifier"],
@@ -79,7 +79,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The full book title exactly as provided in the available books list (e.g., 'The Meditations', 'The Odyssey', 'Alice\\'s Adventures in Wonderland')",
+                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
                     }
                 },
                 "required": ["book_identifier"],
@@ -98,7 +98,7 @@ async def list_tools() -> list[Tool]:
                     "book_identifiers": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of 2-5 book titles to search and compare (e.g., ['The Meditations', 'The Odyssey'])",
+                        "description": "List of 2-5 book SLUGS to search and compare (e.g., ['mam', 'ody']). MUST use slugs from [square brackets], NOT titles.",
                         "minItems": 2,
                         "maxItems": 5
                     },
