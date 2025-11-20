@@ -23,8 +23,13 @@ services:
     container_name: qdrant
     ports:
       - "6333:6333"
+    environment:
+      QDRANT__STORAGE__PATH: /qdrant/storage
+      # Keep WAL preallocation small so it fits even on limited disks
+      QDRANT__STORAGE__WAL__CAPACITY_MB: 16
     volumes:
-      - qdrant_data:/qdrant/storage
+      # Bind to a project-local path so storage lands on the main disk, not a tiny temp mount
+      - ./qdrant_data:/qdrant/storage
 
   phoenix:
     image: arizephoenix/phoenix:latest
@@ -66,7 +71,6 @@ services:
         condition: service_started
 
 volumes:
-  qdrant_data: {}
   phoenix_data: {}
   pgdata:
     driver: local
