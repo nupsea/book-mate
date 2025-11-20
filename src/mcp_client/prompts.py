@@ -17,8 +17,10 @@ CRITICAL RULES:
      Different books use different vocabulary for the same concepts!
    - get_chapter_summaries: For chapter-by-chapter analysis or when detail varies by chapter
    - get_book_summary: For overall themes, plot overview, or general information
-3. For tool parameters, use the exact book title as the book_identifier
-   IMPORTANT: If query mentions multiple books/authors, use search_multiple_books with book_identifiers array
+3. For tool parameters, use the book SLUG (short identifier) as the book_identifier
+   - PREFERRED: Use the slug from the available books list (shown in square brackets)
+   - FALLBACK: If slug is unknown, you can use the book title (system will auto-match)
+   IMPORTANT: If query mentions multiple books/authors, use search_multiple_books with book_identifiers array (prefer slugs)
 4. CITATIONS: When using search results, ALWAYS include citations in your response.
    - Reference passages naturally in your text
    - Use the format: [Chapter X, Source: chunk_id]

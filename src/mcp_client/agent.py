@@ -115,10 +115,10 @@ class BookMateAgent:
             if not books:
                 return "No books currently available in the library.", {}
 
-            # Create user-friendly list (no slugs exposed)
+            # Create list with slugs (needed for tool calls)
             book_list = "\n".join(
                 [
-                    f"- {title}" + (f" by {author}" if author else "")
+                    f"- [{slug}] {title}" + (f" by {author}" if author else "")
                     for slug, title, author in books
                 ]
             )
@@ -126,7 +126,7 @@ class BookMateAgent:
             # Create mapping for internal use
             title_to_slug = {title.lower(): slug for slug, title, _ in books}
 
-            return f"Available books:\n{book_list}", title_to_slug
+            return f"Available books (use slug in square brackets for tool calls):\n{book_list}", title_to_slug
         except Exception as e:
             print(f"[WARN] Could not load book list: {e}")
             return "Book list unavailable.", {}

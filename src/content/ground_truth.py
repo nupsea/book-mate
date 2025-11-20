@@ -56,11 +56,15 @@ Return only a JSON array of 5 strings, with no extra text:
 class GoldenDataGenerator:
 
     def __init__(self) -> None:
-        self.llm = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.llm = None  # Lazy initialization - only create when generating
         self.results = {}
         self.aiw_gt = []
 
     def generate_questions(self, doc):
+        # Lazy initialization of OpenAI client (only once)
+        if self.llm is None:
+            self.llm = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
         gt_prompt = gt_prompt_template.substitute(**doc)
 
         response = self.llm.chat.completions.create(

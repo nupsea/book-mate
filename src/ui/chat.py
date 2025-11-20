@@ -92,7 +92,7 @@ def create_chat_interface(ui):
                     )
 
                 chatbot = gr.Chatbot(
-                    height=450, show_label=False, avatar_images=(None, None)
+                    height=600, show_label=False, avatar_images=(None, None)
                 )
 
                 with gr.Row():
@@ -127,16 +127,16 @@ def create_chat_interface(ui):
 
                 feedback_status = gr.Textbox(visible=False, show_label=False)
 
-                gr.Markdown(
-                    """
-                    ### Tips
-                    - **Book Selection**: Use dropdown or mention book title in your query
-                    - **Search Examples**: "Find passages about virtue", "What does the author say about courage?"
-                    - **Chapter Context**: Ask about specific chapters or broad themes
-                    - **Hybrid Search**: Uses both keyword matching (BM25) and semantic search
-                    - **Rate Responses**: Help improve quality by rating answers
-                    """
-                )
+                with gr.Accordion("💡 Tips", open=False):
+                    gr.Markdown(
+                        """
+                        - **Book Selection**: Use dropdown or mention book title in your query
+                        - **Search Examples**: "Find passages about virtue", "What does the author say about courage?"
+                        - **Chapter Context**: Ask about specific chapters or broad themes
+                        - **Hybrid Search**: Uses both keyword matching (BM25) and semantic search
+                        - **Rate Responses**: Help improve quality by rating answers
+                        """
+                    )
 
             with gr.Column(scale=1, min_width=300):
                 gr.Markdown("### Library")

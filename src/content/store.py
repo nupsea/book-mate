@@ -25,14 +25,21 @@ class PgresStore:
         Resolve book_id from either:
         - book_id (int): returns as-is
         - slug (str): looks up book_id from books table
+        - title (str): fallback to case-insensitive title match
         Returns None if not found.
         """
         if isinstance(book_identifier, int):
             return book_identifier
 
-        # It's a slug, look up book_id
+        # Try exact slug match first
         with self.conn.cursor() as cur:
             cur.execute("SELECT book_id FROM books WHERE slug = %s", (book_identifier,))
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # Fallback: try case-insensitive title match
+            cur.execute("SELECT book_id FROM books WHERE LOWER(title) = LOWER(%s)", (book_identifier,))
             row = cur.fetchone()
             return row[0] if row else None
 
