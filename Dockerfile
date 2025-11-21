@@ -20,6 +20,9 @@ RUN mkdir -p DATA INDEXES
 # Install Python dependencies using uv sync (uses exact versions from uv.lock)
 RUN uv sync --frozen --no-dev
 
+# Ensure model is present in the image
+RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+
 # Disable Python output buffering for real-time logs
 ENV PYTHONUNBUFFERED=1
 
