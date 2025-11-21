@@ -1,11 +1,16 @@
 # Book Mate
 
+[![CI](https://github.com/nupsea/book-mate/actions/workflows/ci.yml/badge.svg)](https://github.com/nupsea/book-mate/actions)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A book assistant (powered by LLMs) that lets you upload books, chat with their content, and seek answers about book content using hybrid search (BM25 + vector embeddings) and MCP (Model Context Protocol) workflow. 
 
 ## Features
 
 - **Book Ingestion**: Upload and index books with automatic chapter detection
 - **AI Chat Interface**: Ask questions about book content with context-aware responses
+- **Multi-Book Search**: Compare themes, concepts, and ideas across multiple books simultaneously
 - **Hybrid Search**: Combines BM25 keyword search with semantic vector search
 - **Automatic Query Retry**: When search returns no results, automatically rephrases and retries queries
 - **Citations**: All responses include source citations with chapter numbers and chunk IDs
@@ -86,12 +91,16 @@ Summary of Recommended Input Patterns:
 ### 2. Chat with Books
 
 Go to the "Chat" tab:
-1. Select a book from the dropdown (optional)
+1. Select a book from the dropdown (optional - leave empty for multi-book queries)
 2. Ask questions like:
    - "What is this book about?"
    - "Search for passages about virtue"
    - "Give me examples of rejection of external validation"
+   - "Compare how Marcus Aurelius and Homer view heroism" (multi-book)
+   - "What do these books say about leadership?" (searches all books)
 3. Rate responses to help improve the system
+
+**Multi-Book Search**: The agent automatically detects when your query mentions multiple books or authors and searches across them simultaneously, providing comparative analysis with citations from each source.
 
 ![Chat with Books](image-3.png)
 
@@ -348,9 +357,17 @@ See [EVALUATION.md](EVALUATION.md) for details on generating ground truth and ev
 - Improve user interface and experience
 - Workflow recording 
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## References & Acknowledgements
 **LLM Zoomcamp:** Thanks to the learnings from DataTalks.Club and the various open source libraries and tools that made this possible
-https://datatalks.club/courses/llm-zoomcamp/ 
+https://datatalks.club/courses/llm-zoomcamp/
 
 **Project Gutenberg:** Thanks to the efforts of volunteers and organizations that provide free public domain book texts. https://www.gutenberg.org/
+
+## License
+
+MIT License - see LICENSE file for details.
 
