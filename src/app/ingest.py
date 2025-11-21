@@ -1,6 +1,5 @@
 import asyncio
 
-from collections import defaultdict
 
 from src.content.reader import GutenbergReader
 from src.content.store import PgresStore
@@ -36,7 +35,7 @@ async def load(
         print(
             f"Summaries for '{title}' (slug: {slug}) already exist. Skipping summarization."
         )
-        print(f"Use force_update=True to regenerate summaries.")
+        print("Use force_update=True to regenerate summaries.")
         return
 
     # Store book metadata

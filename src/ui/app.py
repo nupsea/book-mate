@@ -106,11 +106,11 @@ class BookMateUI:
                             message = f"{message} (for the book '{book_title}')"
                             print(f"[UI] Injected title into message: {message}")
                         else:
-                            print(f"[UI] Title already in message, not injecting")
+                            print("[UI] Title already in message, not injecting")
             except Exception as e:
                 print(f"[WARN] Could not get book title: {e}")
         else:
-            print(f"[UI] No book selected from dropdown")
+            print("[UI] No book selected from dropdown")
 
         # Convert Gradio history to OpenAI format
         conversation_history = []
@@ -146,15 +146,15 @@ def create_app():
 
         with gr.Tabs() as tabs:
             # Tab 1: Chat Interface
-            with gr.Tab("Chat", id=0) as chat_tab:
+            with gr.Tab("Chat", id=0):
                 dropdown, book_list, load_book_list = create_chat_interface(ui)
 
             # Tab 2: Add New Book
-            with gr.Tab("Add Book", id=1) as ingest_tab:
+            with gr.Tab("Add Book", id=1):
                 ingest_book_list = create_ingest_interface()
 
             # Tab 3: Monitoring
-            with gr.Tab("Monitoring", id=2) as monitoring_tab:
+            with gr.Tab("Monitoring", id=2):
                 create_monitoring_interface()
 
         # Auto-refresh book lists when switching tabs

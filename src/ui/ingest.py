@@ -44,7 +44,7 @@ def test_chapter_pattern(file, chapter_example: str):
             output += "Sample matches:\n"
             for i, (line_num, text) in enumerate(matches[:5], 1):
                 output += f"  {i}. Line {line_num}: {text[:60]}\n"
-            output += f"\nPattern looks good! You can proceed with ingestion."
+            output += "\nPattern looks good! You can proceed with ingestion."
         else:
             output += f"[FAILED] {message}\n\n"
             output += "Please try a different example or check your file format."
@@ -152,7 +152,7 @@ async def ingest_new_book(
             force_update=force_update,
         )
 
-        output += f"\n[SUCCESS] Book ingested:\n"
+        output += "\n[SUCCESS] Book ingested:\n"
         output += f"- Slug: {result['slug']}\n"
         output += f"- Title: {result['title']}\n"
         output += f"- Chapters: {result['chapters']}\n"
@@ -175,7 +175,7 @@ async def ingest_new_book(
                 output += "[OK] Chapter count matches! Ingestion successful."
                 chapter_detail = f"Chapters: {', '.join(chunk_info['chapters'])}"
             else:
-                output += f"[WARNING] Chapter count mismatch!\n"
+                output += "[WARNING] Chapter count mismatch!\n"
                 output += f"Expected: {result['chapters']}, Found in index: {chunk_info['total_chapters']}"
                 chapter_detail = f"Mismatch: {chunk_info['total_chapters']} chapters"
         else:

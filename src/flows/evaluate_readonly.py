@@ -75,7 +75,7 @@ def evaluate_readonly(book_slugs: list[str]):
     - Ground truth files exist for the specified books
     """
     print(f"\n{'='*80}")
-    print(f"Read-Only Multi-Book Evaluation")
+    print("Read-Only Multi-Book Evaluation")
     print(f"Books: {', '.join(book_slugs)}")
     print(f"{'='*80}\n")
 
@@ -110,7 +110,7 @@ def evaluate_readonly(book_slugs: list[str]):
         return None
 
     collection_info = qdrant.get_collection("book_chunks")
-    print(f"Collection 'book_chunks' found")
+    print("Collection 'book_chunks' found")
     print(f"  Total vectors: {collection_info.points_count}")
     print()
 
@@ -166,14 +166,14 @@ def evaluate_readonly(book_slugs: list[str]):
     print("\n" + "="*80)
     print("RESULTS - Read-Only Evaluation")
     print("="*80)
-    print(f"\nOVERALL (Combined):")
+    print("\nOVERALL (Combined):")
     print(f"  Total Queries:  {metrics['total_queries']}")
     print(f"  Hit Rate @ 5:   {metrics['hit_rate_at_5']:.3f} ({metrics['hit_rate_at_5']*100:.1f}%)")
     print(f"  MRR @ 5:        {metrics['mrr_at_5']:.3f}")
     print(f"  Hit Rate @ 7:   {metrics['hit_rate_at_7']:.3f} ({metrics['hit_rate_at_7']*100:.1f}%)")
     print(f"  MRR @ 7:        {metrics['mrr_at_7']:.3f}")
 
-    print(f"\nPER-BOOK BREAKDOWN:")
+    print("\nPER-BOOK BREAKDOWN:")
     for book_slug in sorted(per_book_metrics.keys()):
         book_metrics = per_book_metrics[book_slug]
         print(f"\n  [{book_slug}]:")

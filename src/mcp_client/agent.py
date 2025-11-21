@@ -7,7 +7,7 @@ import json
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import OpenAI
-from src.monitoring.metrics import QueryTimer, metrics_collector
+from src.monitoring.metrics import QueryTimer
 from src.monitoring.judge import ResponseJudge
 from src.monitoring.tracer import init_phoenix_tracing
 from src.mcp_client.prompts import (
@@ -216,13 +216,13 @@ class BookMateAgent:
                             tool_result = retry_result
                             results_count = retry_count
                             timer.set_num_results(results_count)
-                            print(f"[RETRY] Success - using retry results")
+                            print("[RETRY] Success - using retry results")
                         else:
-                            print(f"[RETRY] No improvement - LLM will use context knowledge")
+                            print("[RETRY] No improvement - LLM will use context knowledge")
                             timer.set_fallback_to_context()
                     else:
                         # Couldn't rephrase, fall back to context
-                        print(f"[RETRY] Could not rephrase query - LLM will use context knowledge")
+                        print("[RETRY] Could not rephrase query - LLM will use context knowledge")
                         timer.set_fallback_to_context()
             else:
                 results_count = -1
@@ -349,15 +349,15 @@ class BookMateAgent:
 
         # Check if this is a new conversation or needs system prompt
         if not conversation_history:
-            print(f"[CHAT] Creating NEW conversation")
+            print("[CHAT] Creating NEW conversation")
             conversation_history = [system_prompt]
         else:
             # Ensure system prompt exists in continuing conversations
             if not conversation_history or conversation_history[0].get("role") != "system":
-                print(f"[CHAT] CONTINUING conversation - prepending system prompt")
+                print("[CHAT] CONTINUING conversation - prepending system prompt")
                 conversation_history = [system_prompt] + conversation_history
             else:
-                print(f"[CHAT] CONTINUING conversation with existing system prompt")
+                print("[CHAT] CONTINUING conversation with existing system prompt")
 
             # Truncate old messages if history is too long
             if len(conversation_history) > 2:
@@ -458,7 +458,7 @@ class BookMateAgent:
             (assistant_response, updated_conversation_history, query_id)
         """
         print(f"\n{'='*80}")
-        print(f"[CHAT] NEW REQUEST")
+        print("[CHAT] NEW REQUEST")
         print(f"[CHAT] User message: {user_message}")
         print(
             f"[CHAT] Conversation history length: {len(conversation_history) if conversation_history else 0}"
@@ -481,7 +481,7 @@ class BookMateAgent:
                     user_message, conversation_history
                 )
 
-                print(f"[CHAT] Full conversation being sent to LLM:")
+                print("[CHAT] Full conversation being sent to LLM:")
                 for i, msg in enumerate(conversation_history):
                     role = msg.get("role", "unknown")
                     content = msg.get("content", "")

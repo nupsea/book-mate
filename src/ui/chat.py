@@ -3,7 +3,6 @@ Chat interface component.
 """
 
 import gradio as gr
-import asyncio
 from src.ui.utils import get_available_books, format_book_list
 from src.monitoring.metrics import metrics_collector
 
