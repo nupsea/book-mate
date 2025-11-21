@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nupsea/book-mate/actions/workflows/ci.yml/badge.svg)](https://github.com/nupsea/book-mate/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A book assistant (powered by LLMs) that lets you upload books, chat with their content, and seek answers about book content using hybrid search (BM25 + vector embeddings) and MCP (Model Context Protocol) workflow. 
 
@@ -369,5 +369,5 @@ https://datatalks.club/courses/llm-zoomcamp/
 
 ## License
 
-MIT License - see LICENSE file for details.
+GNU General Public License v3.0 - see LICENSE file for details.
 
