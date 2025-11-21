@@ -46,7 +46,7 @@ async def list_tools() -> list[Tool]:
                     "query": {"type": "string", "description": "The search query"},
                     "book_identifier": {
                         "type": "string",
-                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
+                        "description": "The book SLUG from the available books list (e.g., 'abc', 'xyz'). MUST use the slug shown in [square brackets], NOT the full title.",
                     },
                     "limit": {
                         "type": "integer",
@@ -65,7 +65,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
+                        "description": "The book SLUG from the available books list (e.g., 'abc', 'xyz'). MUST use the slug shown in [square brackets], NOT the full title.",
                     }
                 },
                 "required": ["book_identifier"],
@@ -79,7 +79,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "book_identifier": {
                         "type": "string",
-                        "description": "The book SLUG from the available books list (e.g., 'mam', 'hegel', 'alice'). MUST use the slug shown in [square brackets], NOT the full title.",
+                        "description": "The book SLUG from the available books list (e.g., 'abc', 'xyz'). MUST use the slug shown in [square brackets], NOT the full title.",
                     }
                 },
                 "required": ["book_identifier"],
@@ -93,12 +93,12 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search query to use across all books. Use specific, concrete terms rather than abstract concepts. For better results with comparative questions, include multiple related terms separated by spaces (e.g., 'heroism courage brave warrior' instead of just 'heroism')"
+                        "description": "The search query to use across all books. Use specific, concrete terms rather than abstract concepts. For better results with comparative questions, include multiple related terms separated by spaces (e.g., 'concept1 concept2 term1 term2' instead of just 'concept1')"
                     },
                     "book_identifiers": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of 2-5 book SLUGS to search and compare (e.g., ['mam', 'ody']). MUST use slugs from [square brackets], NOT titles.",
+                        "description": "List of 2-5 book SLUGS to search and compare (e.g., ['abc', 'xyz']). MUST use slugs from [square brackets], NOT titles.",
                         "minItems": 2,
                         "maxItems": 5
                     },
