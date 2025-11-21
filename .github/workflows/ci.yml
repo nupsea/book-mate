@@ -3,10 +3,6 @@ name: CI
 on:
   push:
     branches: [ master ]
-<<<<<<< HEAD
-  pull_request:
-    branches: [ master ]
-=======
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -21,7 +17,6 @@ on:
       - '.gitignore'
       - 'LICENSE'
       - '**.txt'
->>>>>>> 8ac6f27 (README changes)
 
 jobs:
   lint:
