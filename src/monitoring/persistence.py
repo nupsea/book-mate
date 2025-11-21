@@ -4,7 +4,6 @@ Database persistence layer for metrics.
 
 import psycopg2
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 from src.monitoring.metrics import QueryMetric, LLMRelevanceScore
 from src.content.store import DB_CONFIG
 

@@ -158,7 +158,7 @@ def evaluate_multibook(book_slugs: list[str]):
     book_titles = [BOOK_CONFIGS[s]['title'] for s in book_slugs if s in BOOK_CONFIGS]
 
     print(f"\n{'='*80}")
-    print(f"Multi-Book Search Evaluation")
+    print("Multi-Book Search Evaluation")
     print(f"Books: {', '.join(book_titles)}")
     print(f"{'='*80}\n")
 

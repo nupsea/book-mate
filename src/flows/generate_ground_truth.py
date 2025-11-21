@@ -2,7 +2,6 @@
 Generate ground truth evaluation data for a book using LLM as judge.
 """
 
-import json
 from src.content.ground_truth import GoldenDataGenerator
 from src.content.reader import GutenbergReader
 

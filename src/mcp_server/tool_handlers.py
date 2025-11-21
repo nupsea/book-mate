@@ -164,7 +164,7 @@ class BookToolHandlers:
                 if result.get("error"):
                     output += f"Error: {result['error']}\n\n"
                 elif result["num_results"] == 0:
-                    output += f"No results found in this book.\n\n"
+                    output += "No results found in this book.\n\n"
                 else:
                     # Format passages for this book
                     for i, chunk in enumerate(result["chunks"], 1):

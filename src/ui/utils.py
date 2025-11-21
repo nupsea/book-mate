@@ -210,7 +210,6 @@ def delete_book(slug: str) -> tuple[bool, str, int]:
                 return False, f"Book '{slug}' not found", 0
 
             book_title = result[0]
-            num_chunks = result[1] or 0
 
         # Delete from PostgreSQL (CASCADE handles summaries)
         with store.conn.cursor() as cur:

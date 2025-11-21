@@ -1,0 +1,12 @@
+# Ruff configuration for Book Mate
+
+[lint]
+# Ignore E402 (module level import not at top of file) for MCP server files
+# These imports must happen after logging configuration to prevent stdout pollution
+per-file-ignores = { "src/mcp_server/*.py" = ["E402"] }
+
+# Ignore line length and whitespace issues for now (can be fixed incrementally)
+ignore = ["E501", "W291", "W293"]
+
+# Focus on critical issues: undefined names, unused imports, syntax errors
+select = ["F", "E4", "E7", "E9"]
