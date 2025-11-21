@@ -27,7 +27,7 @@ Thanks for your interest in contributing!
 - UI/UX enhancements
 - Performance improvements
 
-Look for `good first issue` label for easy starting points!
+Check the [GitHub Issues](https://github.com/nupsea/book-mate/issues) page for open issues. Issues labeled `good first issue` are great starting points for new contributors!
 
 ## Code Style
 
